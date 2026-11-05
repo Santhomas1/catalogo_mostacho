@@ -294,3 +294,23 @@ main, fieldset, .product-detail > *, .cart-layout > *, .cart-line > *,
 .pwa-install p { margin-bottom: 0; font-size: 14px; line-height: 1.7; color: #526971; }
 .pwa-install [data-slot=button] { flex-shrink: 0; }
 @media(max-width:640px) { .pwa-install { align-items: stretch; flex-direction: column; gap: 16px; } }
+
+/* Barra compacta de búsqueda y filtros, con el conteo como información secundaria. */
+.catalog-filters { display: grid; grid-template-columns: minmax(180px, 320px) minmax(160px, 220px) 1fr; align-items: center; gap: 12px; padding-block: 8px 20px; margin-bottom: 24px; border-bottom: 1px solid #e5edf0; }
+.catalog-filters .catalog-search { display: flex; flex-direction: row; align-items: center; gap: 8px; min-width: 0; padding-inline: 12px; border: 1px solid var(--input); border-radius: 8px; background: #f6f9fa; }
+.catalog-search > svg { flex-shrink: 0; color: #526971; }
+.catalog-filters .catalog-search input { min-width: 0; border: 0; border-radius: 0; padding: 10px 0; background: transparent; font-size: 14px; line-height: 1.5; }
+.catalog-search input::placeholder { color: #526971; opacity: 1; }
+.catalog-filters .catalog-category { position: relative; display: block; min-width: 0; }
+.catalog-filters .catalog-category select { appearance: none; min-width: 0; padding: 10px 36px 10px 12px; border-color: var(--input); border-radius: 8px; background: white; font-size: 14px; line-height: 1.5; text-overflow: ellipsis; }
+.catalog-category > svg { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #526971; }
+.catalog-search:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.catalog-search input:focus-visible { outline: none; }
+.catalog-category select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.catalog-result-count { justify-self: end; margin: 0; color: #526971; font-size: 12px; line-height: 1.5; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.catalog-result-count > span { font-weight: 600; }
+@media (max-width: 640px) {
+  .catalog-filters { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding-bottom: 16px; }
+  .catalog-search { grid-column: 1 / -1; }
+  .catalog-filters .catalog-search input, .catalog-filters .catalog-category select { font-size: 16px; }
+}

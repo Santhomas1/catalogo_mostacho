@@ -55,6 +55,17 @@ test('recorrido de dos productos: catálogo, detalle, cantidades, seguir eligien
   assert.equal(JSON.parse(view.memory.get('mostacho-cart-v1')).length,2)
  }finally{await view.close()}
 })
+test('producto publicado sin variantes ni cuidados muestra consulta y omite cuidados',async()=>{
+ const row=product(7);row.variantes_producto=[];row.instrucciones_cuidado=null
+ const view=await mountApp('/productos/diseno-7',[],backend([row]))
+ try{
+  assert.ok(text(view).includes('Diseño Ñ 7'))
+  assert.ok(text(view).includes('Consultar este producto'))
+  assert.ok(!text(view).includes('Cuidados'))
+  assert.ok(!button(view,'Agregar al carrito'))
+ }finally{await view.close()}
+})
+
 test('variantes inactivas/no disponibles, foto ausente y producto oculto se resuelven sin ofrecer compra',async()=>{
  const inactive=product(3);inactive.variantes_producto[0].activa=false
  const view=await mountApp('/productos/diseno-3',[],backend([inactive]))

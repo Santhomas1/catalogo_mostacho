@@ -7,7 +7,7 @@ const root=view=>view.renderer.root
 function field(view,name){const label=root(view).findAllByType('label').find(l=>l.findAllByType('span')[0]?.children.join('')===name);assert.ok(label,name);return label.findAll(n=>['input','select','textarea'].includes(n.type))[0]}
 const button=(view,text)=>root(view).findAllByType('button').find(b=>b.children.includes(text))
 
-test('crear borrador genera slug y no habilita publicar sin foto y variante',async()=>{
+test('crear borrador genera slug y no habilita publicar sin foto',async()=>{
  let saved,created
  const service={references:async()=>refs,save:async(table,values)=>{saved={table,values};return {id:pid}}}
  const view=await mountEditor('product',{id:'new',service,client:{},onClose(){},onCreated:id=>{created=id}})
@@ -17,6 +17,22 @@ test('crear borrador genera slug y no habilita publicar sin foto y variante',asy
   assert.equal(field(view,'Dirección corta (slug)').props.value,'maceta-nandu')
   await act(async()=>{root(view).findByType('form').props.onSubmit({preventDefault(){}})})
   assert.equal(saved.table,'productos');assert.equal(saved.values.publicado,false);assert.equal(created,pid)
+ }finally{await view.close()}
+})
+
+test('publica con foto sin variantes y guarda los cuidados vacíos como null',async()=>{
+ let saved
+ const product={id:pid,nombre:'Maceta',slug:'maceta',categoria_id:'cat',publicado:false,imagenes_producto:[{id:'foto'}],variantes_producto:[],instrucciones_cuidado:null}
+ const service={references:async()=>refs,product:async()=>product,save:async(table,values)=>{saved={table,values};return product}}
+ const view=await mountEditor('product',{id:pid,service,client:{},onClose(){},onCreated(){}})
+ try{
+  assert.ok(!field(view,'Publicado en el catálogo').props.disabled)
+  assert.ok(!field(view,'Instrucciones de cuidado (opcional)').props.required)
+  await act(async()=>{field(view,'Publicado en el catálogo').props.onChange({target:{checked:true}})})
+  await act(async()=>{root(view).findByType('form').props.onSubmit({preventDefault(){}})})
+  assert.equal(saved.table,'productos')
+  assert.equal(saved.values.publicado,true)
+  assert.equal(saved.values.instrucciones_cuidado,null)
  }finally{await view.close()}
 })
 test('formulario de variante a acordar envía nulos y no solicita stock',async()=>{

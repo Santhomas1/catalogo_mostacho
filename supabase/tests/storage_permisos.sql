@@ -27,6 +27,10 @@ begin
  insert into public.imagenes_producto(producto_id,storage_path,texto_alternativo)
  select split_part(name,'/',2)::uuid,name,'Metadato temporal, sin archivo real'
  from storage.objects where bucket_id='productos' and split_part(name,'/',2) in (p::text,oculto::text,pcat::text);
+ -- Se permite publicar con imagen, sin variantes ni cuidados.
+ update public.productos set publicado=true,instrucciones_cuidado=null where id=p;
+ set constraints all immediate;
+ set constraints all deferred;
  insert into public.variantes_producto(producto_id,material_id,color_id,sku,nombre,precio,moneda,disponibilidad,stock)
  values (p,mat,col,'TEST-RLS-VISIBLE','Visible',100,'ARS','bajo_pedido',2),
  (oculto,mat,col,'TEST-RLS-BORRADOR','Borrador',100,'ARS','bajo_pedido',2),
@@ -56,7 +60,7 @@ end $$;
 do $$
 declare n integer; permiso boolean; regla text;
 begin
- if (select count(*) from storage.objects where bucket_id='productos') <> 1 then raise exception 'FALLO: archivos de borradores visibles'; end if;
+ if (select count(*) from storage.objects where bucket_id='productos' and split_part(name,'/',2) in (select id::text from public.productos where slug in ('visible-rls','borrador-rls','categoria-oculta-rls'))) <> 1 then raise exception 'FALLO: archivos de borradores visibles'; end if;
  select qual into regla from pg_policies where schemaname='storage' and tablename='objects' and policyname='productos_delete';
  execute 'select coalesce(bool_or((' || regla || ')),false) from storage.objects where bucket_id=''productos''' into permiso;
  if permiso then raise exception 'FALLO: visitante puede borrar objetos visibles'; end if;
@@ -116,7 +120,7 @@ begin
   insert into public.productos(categoria_id,nombre,slug,publicado)
   values (current_setting('mostacho.test_category')::uuid,'Incompleto','incompleto-rls',true);
   set constraints all immediate;
-  raise exception 'FALLO: publicación sin imagen ni variante';
+  raise exception 'FALLO: publicación sin imagen';
  exception when check_violation then null;
  end;
  -- Borrar o mover la última foto también respeta la regla.
@@ -136,14 +140,13 @@ begin
  begin
   update public.variantes_producto set activa=false where producto_id=current_setting('mostacho.test_product')::uuid;
   set constraints all immediate;
-  raise exception 'FALLO: desactivar ultima variante';
- exception when check_violation then null;
+  update public.variantes_producto set activa=true where producto_id=current_setting('mostacho.test_product')::uuid;
  end;
  begin
   delete from public.variantes_producto where producto_id=current_setting('mostacho.test_product')::uuid;
   set constraints all immediate;
-  raise exception 'FALLO: borrar ultima variante';
- exception when check_violation then null;
+  raise exception using errcode='ZX001',message='Restaurar variantes de prueba';
+ exception when sqlstate 'ZX001' then null;
  end;
  begin
   update public.variantes_producto set precio=-1 where sku='TEST-RLS-VISIBLE';
@@ -172,7 +175,7 @@ end $$;
 do $$
 declare ruta text; n integer;
 begin
- if (select count(*) from storage.objects where bucket_id='productos') <> 3 then raise exception 'FALLO: admin no ve borradores'; end if;
+ if (select count(*) from storage.objects where bucket_id='productos' and split_part(name,'/',2) in (select id::text from public.productos where slug in ('visible-rls','borrador-rls','categoria-oculta-rls'))) <> 3 then raise exception 'FALLO: admin no ve borradores'; end if;
  ruta := 'products/' || current_setting('mostacho.test_product') || '/' || gen_random_uuid() || '.webp';
  insert into storage.objects(bucket_id,name) values('productos',ruta);
  update storage.objects set metadata='{"prueba":true}' where bucket_id='productos' and name=ruta;

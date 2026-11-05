@@ -22,7 +22,7 @@ export default function ProductCard({ product }) {
   const canPrice = fixed.length > 0 && currencies.size === 1
   const price = canPrice ? Math.min(...fixed.map(v => v.price)) : null
   const differentPrices = canPrice && (quoted || fixed.some(v => v.price !== price))
-  const availability = !variants.length ? 'No disponible' : 'Por pedido'
+  const availability = !product.variants.length ? 'Consultar disponibilidad' : !variants.length ? 'No disponible' : 'Por pedido'
   return <Card className="product-card">
     <div className="product-media">{cover && !imageFailed ? <img className="product-photo" src={cover.url} alt={cover.alt} loading="lazy" onError={() => setImageFailed(true)} /> : <ProductVisual />}{product.demo && <span className="demo-badge">Producto de prueba</span>}</div>
     <CardContent>

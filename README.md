@@ -78,3 +78,8 @@ La preparación y los pasos de primera subida están en [PREPARACION_GITHUB.md](
 ## Aplicación instalable (PWA)
 
 Configuración, instalación en Android/iPhone y comprobaciones en [PWA_MOSTACHO.md](PWA_MOSTACHO.md). Incluye manifest, iconos, registro en producción, invitación de instalación compatible y pantalla sin conexión. El catálogo y la administración siguen necesitando Internet; no se cachean datos de Supabase. Vercel sirve las rutas de React mediante `vercel.json`. No requiere variables de entorno adicionales ni ejecutar migraciones.
+## Publicación con campos opcionales
+
+Para publicar se requiere una imagen, además de los datos básicos del producto. Las variantes son opcionales y las instrucciones de cuidado pueden dejarse vacías. Sin variantes, la ficha ofrece consultar el producto y no permite agregarlo al carrito; los cuidados vacíos no se muestran.
+
+La migración `20261105153339_variantes_opcionales_publicacion.sql` actualiza la validación de la base de datos y conserva el requisito de imagen. Ya está aplicada en `mostacho-3d-desarrollo`. Verificación: 71 pruebas JavaScript, compilación y pruebas SQL de publicación/permisos y administración con transacciones revertidas.

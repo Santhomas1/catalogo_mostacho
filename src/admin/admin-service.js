@@ -12,7 +12,7 @@ export function slugify(text) {
 export function adminError(error) {
   if (error?.code === '23505') return 'Ya existe un registro con ese nombre, dirección, SKU u orden. Revisá los datos o actualizá la lista si ya habías guardado.'
   if (error?.code === '23503') return 'Hay registros relacionados. Desactivá u ocultá este elemento en lugar de eliminarlo.'
-  if (error?.code === '23514') return 'No se pudo guardar: revisá los campos. Para publicar se necesitan una imagen y una variante activa; no se puede quitar la última de un producto publicado.'
+  if (error?.code === '23514') return 'No se pudo guardar: revisá los campos. Para publicar se necesita una imagen; no se puede quitar la última foto de un producto publicado.'
   if (error?.code === 'PGRST116') return 'El registro cambió o ya no tenés permiso. Recargá los datos antes de volver a guardar.'
   if (error?.code === '42501' || error?.status === 401 || error?.status === 403) return 'La sesión no tiene permiso para esta operación. Volvé a iniciar sesión o comprobá tu acceso.'
   return error instanceof Error ? error.message : 'No se pudo completar la operación. Revisá los datos y la conexión e intentá nuevamente.'

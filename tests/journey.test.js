@@ -55,6 +55,38 @@ test('recorrido de dos productos: catálogo, detalle, cantidades, seguir eligien
   assert.equal(JSON.parse(view.memory.get('mostacho-cart-v1')).length,2)
  }finally{await view.close()}
 })
+test('galería cambia de foto, muestra cuidados opcionales y conserva cantidades y selección',async()=>{
+ const row=product(8,true)
+ row.instrucciones_cuidado='Limpiar con un paño húmedo.'
+ row.imagenes_producto=[1,2].map(n=>({id:uuid(800+n),storage_path:`products/test-${n}.webp`,texto_alternativo:`Vista ${n}`,orden:n}))
+ const fetcher=backend([row])
+ const view=await mountApp('/productos/diseno-8',[],async(input,options)=>{
+  if(String(input).includes('/storage/'))return new Response(JSON.stringify([1,2].map(n=>({path:`products/test-${n}.webp`,signedURL:`/test-${n}.webp?token=test`}))),{headers:{'Content-Type':'application/json'}})
+  return fetcher(input,options)
+ })
+ try{
+  const root=view.renderer.root
+  const named=name=>root.findAllByType('button').find(b=>b.props['aria-label']===name)
+  assert.equal(named('Imagen anterior').props.disabled,true)
+  assert.equal(named('Ver imagen 1').props['aria-pressed'],true)
+  await act(async()=>named('Imagen siguiente').props.onClick())
+  assert.equal(named('Imagen siguiente').props.disabled,true)
+  assert.equal(named('Ver imagen 2').props['aria-pressed'],true)
+  assert.ok(root.findAllByType('img').some(img=>img.props.alt==='Vista 2'))
+  await act(async()=>named('Ver imagen 1').props.onClick())
+  assert.equal(named('Ver imagen 1').props['aria-pressed'],true)
+  await act(async()=>named('Aumentar cantidad').props.onClick())
+  assert.equal(root.findByProps({id:'quantity'}).props.value,'2')
+  await act(async()=>named('Reducir cantidad').props.onClick())
+  assert.equal(root.findByProps({id:'quantity'}).props.value,'1')
+  assert.equal(named('Reducir cantidad').props.disabled,true)
+  assert.ok(text(view).includes('Acordar con el vendedor'))
+  assert.ok(text(view).includes('Limpiar con un paño húmedo.'))
+  assert.ok(root.findAllByType('summary').some(s=>s.children.includes('Cuidados')))
+  assert.ok(!/lucide-star|rating|valoración/.test(text(view)))
+ }finally{await view.close()}
+})
+
 test('producto publicado sin variantes ni cuidados muestra consulta y omite cuidados',async()=>{
  const row=product(7);row.variantes_producto=[];row.instrucciones_cuidado=null
  const view=await mountApp('/productos/diseno-7',[],backend([row]))
@@ -70,7 +102,7 @@ test('variantes inactivas/no disponibles, foto ausente y producto oculto se resu
  const inactive=product(3);inactive.variantes_producto[0].activa=false
  const view=await mountApp('/productos/diseno-3',[],backend([inactive]))
  try{
-  assert.ok(text(view).includes('Sin opciones disponibles.'))
+  assert.ok(text(view).includes('Consultá las opciones de este producto'))
   assert.ok(text(view).includes('producto-sin-imagen.svg'))
   assert.ok(!button(view,'Agregar al carrito'))
  }finally{await view.close()}

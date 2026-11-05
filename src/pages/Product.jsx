@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { catalogService } from '@/services/catalog'
 import { useRemote } from '@/hooks/useRemote'
@@ -7,7 +7,7 @@ import { ProductVisual } from '@/components/ProductCard'
 import { useCart } from '@/components/CartProvider'
 import { Button } from '@/components/ui/button'
 import EmptyPage from '@/pages/EmptyPage'
-import { variantPriceLabel, productionLabel } from '@/lib/pricing'
+import { variantPriceLabel, productionLabel, AGREED_PRICE_LABEL, isAgreedPrice } from '@/lib/pricing'
 import PageMetadata from '@/components/PageMetadata'
 import { productMetadata } from '@/lib/metadata'
 export default function Product() {
@@ -30,6 +30,47 @@ function ProductDetail({ product }) {
   const valid = variant && variant.availability !== 'no_disponible' && Number.isSafeInteger(amount) && amount > 0
   const images = product.images || []
   const imageIndex = Math.min(photo, Math.max(0, images.length - 1))
+  const root = useRef(null)
   useEffect(() => { setFailed(false) }, [images[imageIndex]?.url])
-  return <section className="container catalog-page"><Link className="back-link" to="/catalogo">← Volver al catálogo</Link>{product.demo && <p className="demo-notice">Producto ficticio de prueba. No está a la venta.</p>}<div className="product-detail"><div>{images.length ? <>{failed ? <ProductVisual /> : <img className="product-photo" src={images[imageIndex].url} alt={images[imageIndex].alt} onError={() => setFailed(true)} />}<div className="gallery-thumbnails">{images.map((image, i) => <button key={image.url} aria-label={`Ver imagen ${i + 1}`} aria-pressed={photo === i} onClick={() => { setPhoto(i); setFailed(false) }}><img src={image.url} alt={image.alt} /></button>)}</div></> : <ProductVisual />}</div><div><p className="eyebrow">{product.category}</p><h1>{product.name}</h1><p>{product.description}</p>{variant ? <><label className="variant-label" htmlFor="variant">Material, color y tamaño</label><select id="variant" value={selected} onChange={e => { setSelected(e.target.value); setQuantity('1'); setNotice('') }}>{variants.map(v => <option key={v.id} value={v.id} disabled={v.availability === 'no_disponible'}>{v.name}{v.availability === 'no_disponible' ? ' · No disponible' : ''}</option>)}</select><div aria-live="polite" className="variant-summary"><p className="product-price">{variantPriceLabel(variant)}</p><p>Medidas: {variant.dimensions}</p><p>{productionLabel(variant)}</p></div><label className="variant-label" htmlFor="quantity">Cantidad</label><input id="quantity" type="number" min="1" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} />{!valid && <p role="status">Ingresá una cantidad entera positiva para una opción disponible.</p>}<div className="hero-actions cart-actions"><Button disabled={!valid} onClick={() => { add(variant.id, amount, product); setNotice('Agregado al carrito. Podés seguir eligiendo.') }}>Agregar al carrito</Button><Button asChild variant="outline"><Link to="/carrito">Ver carrito</Link></Button></div><p role="status">{notice}</p></> : <><p>Sin opciones disponibles.</p><Button asChild variant="outline"><Link to="/contacto">Consultar este producto</Link></Button></>}<p className="product-availability">Trabajamos por pedido. Precio final, tamaños y plazos a confirmar al cotizar.</p>{product.care && <section><h2>Cuidados</h2><p>{product.care}</p></section>}</div></div></section>
+  useEffect(() => {
+    if (!root.current || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.removeAttribute('data-reveal-pending'); observer.unobserve(entry.target) }
+    }), { threshold: 0.05 })
+    const nodes = root.current.querySelectorAll('[data-detail-reveal]')
+    nodes.forEach(node => { node.setAttribute('data-reveal-pending', ''); observer.observe(node) })
+    return () => { observer.disconnect(); nodes.forEach(node => node.removeAttribute('data-reveal-pending')) }
+  }, [])
+  function showPhoto(index) { setPhoto(index); setFailed(false) }
+  return <section className="container product-page" ref={root}>
+    <nav className="detail-breadcrumb" aria-label="Ruta del producto"><Link to="/catalogo">Volver al catálogo</Link><span aria-hidden="true">/</span><Link to={`/catalogo?categoria=${encodeURIComponent(product.categorySlug)}`}>{product.category}</Link></nav>
+    {product.demo && <p className="demo-notice">Producto ficticio de prueba. No está a la venta.</p>}
+    <div className="product-detail">
+      <section className="detail-gallery" aria-label="Fotos del producto" data-detail-reveal>
+        <div className="detail-image-stage">{images.length && !failed
+          ? <img className="product-photo" src={images[imageIndex].url} alt={images[imageIndex].alt} width="800" height="800" decoding="async" onError={() => setFailed(true)} />
+          : <ProductVisual />}</div>
+        {images.length > 0 && <div className="detail-gallery-nav"><p aria-live="polite" aria-atomic="true">Imagen {imageIndex + 1} de {images.length}</p>{images.length > 1 && <div><button type="button" disabled={imageIndex === 0} aria-label="Imagen anterior" onClick={() => showPhoto(imageIndex - 1)}>Anterior</button><button type="button" disabled={imageIndex === images.length - 1} aria-label="Imagen siguiente" onClick={() => showPhoto(imageIndex + 1)}>Siguiente</button></div>}</div>}
+        {images.length > 1 && <div className="gallery-thumbnails" role="group" aria-label="Elegir foto">{images.map((image, i) => <button type="button" key={image.id || image.path || i} aria-label={`Ver imagen ${i + 1}`} aria-pressed={imageIndex === i} onClick={() => showPhoto(i)}><img src={image.url} alt="" loading="lazy" onError={e => { if (!e.currentTarget.src.endsWith('/images/producto-sin-imagen.svg')) e.currentTarget.src = '/images/producto-sin-imagen.svg' }} /></button>)}</div>}
+      </section>
+      <div className="detail-info" data-detail-reveal>
+        <header className="detail-heading"><div className="detail-meta"><p>{product.category}</p><span>{variant?.availability === 'no_disponible' ? 'No disponible' : 'Por pedido'}</span></div><h1>{product.name}</h1></header>
+        <div className="detail-price-block" aria-live="polite"><p className="detail-label">{!variant || isAgreedPrice(variant) ? 'Precio a consultar' : 'Precio por unidad'}</p><p className={`detail-price${!variant || isAgreedPrice(variant) ? ' detail-price-quote' : ''}`}>{variant ? variantPriceLabel(variant) : AGREED_PRICE_LABEL}</p><p className="detail-price-hint">{variant ? productionLabel(variant) : 'Tamaños, materiales y plazo a coordinar.'}</p></div>
+        {variant ? <div className="detail-order">
+          <label className="detail-label" htmlFor="variant">Material, color y tamaño</label>
+          <select id="variant" value={selected} onChange={e => { setSelected(e.target.value); setQuantity('1'); setNotice('') }}>{variants.map(v => <option key={v.id} value={v.id} disabled={v.availability === 'no_disponible'}>{v.name}{v.availability === 'no_disponible' ? ' · No disponible' : ''}</option>)}</select>
+          <dl className="detail-specs"><div><dt>Material</dt><dd>{variant.material}</dd></div><div><dt>Color</dt><dd>{variant.color}</dd></div><div><dt>Medidas</dt><dd>{variant.dimensions}</dd></div></dl>
+          <div className="detail-purchase-row"><div><label className="detail-label" htmlFor="quantity">Cantidad</label><div className="detail-quantity"><button type="button" aria-label="Reducir cantidad" disabled={!Number.isSafeInteger(amount) || amount <= 1} onClick={() => setQuantity(String(amount - 1))}>−</button><input id="quantity" type="number" min="1" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} /><button type="button" aria-label="Aumentar cantidad" disabled={!Number.isSafeInteger(amount) || amount < 1 || amount >= Number.MAX_SAFE_INTEGER} onClick={() => setQuantity(String(amount + 1))}>+</button></div></div><Button className="detail-primary" disabled={!valid} onClick={() => { add(variant.id, amount, product); setNotice('Agregado al carrito. Podés seguir eligiendo.') }}>Agregar al carrito</Button></div>
+          {!valid && <p className="detail-feedback" role="status">Ingresá una cantidad entera positiva para una opción disponible.</p>}
+          <p className="detail-feedback" role="status">{notice}</p><Link className="detail-secondary-link" to="/carrito">Ver carrito</Link>
+        </div> : <div className="detail-inquiry"><p>Consultá las opciones de este producto y coordinamos los detalles con vos.</p><Button asChild className="detail-primary"><Link to="/contacto">Consultar este producto</Link></Button></div>}
+        <p className="detail-order-note">Hecho por pedido. Confirmamos el precio final y la fecha antes de producir.</p>
+        <div className="detail-details">
+          {product.description?.trim() && <details open><summary>Sobre este producto</summary><p>{product.description}</p></details>}
+          {product.care?.trim() && <details><summary>Cuidados</summary><p>{product.care}</p></details>}
+          <details><summary>Retiro y coordinación</summary><p>Retiro coordinado en San Miguel de Tucumán. Consultanos para acordar la fecha y los detalles de tu pedido.</p></details>
+        </div>
+      </div>
+    </div>
+  </section>
 }

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <rect width="640" height="640" fill="#eef8fc"/>
+  <g stroke="#147197" stroke-width="6" fill="none" stroke-linejoin="round">
+    <path d="m240 250 80-44 80 44v100l-80 44-80-44z"/>
+    <path d="m240 250 80 44 80-44m-80 44v100m-40-166 80 44"/>
+  </g>
+  <text x="320" y="452" text-anchor="middle" fill="#526971" font-family="Arial,sans-serif" font-size="22">Imagen no disponible</text>
+</svg>

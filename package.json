@@ -1,0 +1,34 @@
+{
+  "name": "mostacho-3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test --test-timeout=20000 tests/cart.test.js tests/catalog-service.test.js tests/images.test.js tests/ui-render.test.js tests/cart-react.test.js tests/admin-service.test.js tests/admin-react.test.js tests/admin-editors.test.js tests/metadata.test.js tests/journey.test.js"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.1.0",
+    "@supabase/supabase-js": "2.119.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0",
+    "tailwind-merge": "^3.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react-test-renderer": "19.3.1",
+    "tailwindcss": "^4.0.0",
+    "tw-animate-css": "^1.3.0",
+    "vite": "^6.1.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

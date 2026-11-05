@@ -1,0 +1,35 @@
+import { useCallback, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Field, Check } from './Fields'
+import { useRemote } from '@/hooks/useRemote'
+import RemoteState from '@/components/RemoteState'
+import { slugify } from './admin-service'
+import { useAdminAction } from './useAdminAction'
+import AdminFeedback from './AdminFeedback'
+import DeleteConfirm from './DeleteConfirm'
+import VariantPanel from './VariantPanel'
+import ImagesPanel from './ImagesPanel'
+import { cleanImageQueue } from '@/services/images'
+
+export default function ProductWorkspace({ id, service, client, onClose, onCreated, initialMessage = '' }) {
+  const [tab, setTab] = useState('datos'), [message, setMessage] = useState(initialMessage)
+  const loader = useCallback(async () => {
+    const [product, references] = await Promise.all([id === 'new' ? null : service.product(id), service.references()])
+    return { product, references }
+  }, [id, service])
+  const { data, loading, error, retry } = useRemote(loader)
+  const changed = text => { setMessage(text); retry() }
+  return <section><Button variant="ghost" onClick={() => onClose()}>← Volver a productos</Button><RemoteState loading={loading} error={error} retry={retry} />{message && <p role="status" className="admin-notice">{message}</p>}{data && <><h2>{data.product?.nombre || 'Nuevo producto'}</h2><p>Guardá los cambios de una sección antes de pasar a otra.</p><div className="admin-tabs" aria-label="Secciones del producto">{['datos','variantes','imagenes'].map(value => <Button key={value} variant={tab === value ? 'default' : 'outline'} aria-pressed={tab === value} disabled={value !== 'datos' && !data.product} onClick={() => setTab(value)}>{({ datos: 'Datos y publicación', variantes: 'Variantes', imagenes: 'Imágenes' })[value]}</Button>)}</div>{tab === 'datos' && <ProductForm product={data.product} references={data.references} service={service} client={client} onSaved={row => { if (!data.product) onCreated(row.id); else changed('Producto guardado. Los cambios se reflejarán al consultar el catálogo público.') }} onDeleted={onClose} />}{tab === 'variantes' && data.product && <VariantPanel product={data.product} references={data.references} service={service} onChanged={changed} />}{tab === 'imagenes' && data.product && <ImagesPanel product={data.product} client={client} service={service} onChanged={changed} />}</>}</section>
+}
+function ProductForm({ product, references, service, client, onSaved, onDeleted }) {
+  const [form, setForm] = useState({ id: product?.id || crypto.randomUUID(), nombre: '', slug: '', categoria_id: '', descripcion: '', instrucciones_cuidado: '', destacado: false, publicado: false, ...product })
+  const [deleting, setDeleting] = useState(false)
+  const action = useAdminAction()
+  const change = (field, value) => setForm(old => ({ ...old, [field]: value }))
+  const canPublish = Boolean(product?.imagenes_producto?.length && product?.variantes_producto?.some(v => v.activa))
+  return <section className="admin-editor"><form onSubmit={e => { e.preventDefault(); action.run(async () => {
+    if (form.publicado && !canPublish) throw new Error('Antes de publicar agregá una foto y una variante activa.')
+    const values = { ...form, nombre: form.nombre.trim(), descripcion: form.descripcion?.trim() || null, instrucciones_cuidado: form.instrucciones_cuidado?.trim() || null }
+    const row = await service.save('productos', values, product); onSaved(row)
+  }) }}><fieldset disabled={action.busy}><div className="admin-form-grid"><Field label="Nombre" maxLength={180} required value={form.nombre} onChange={e => { const nombre=e.target.value; setForm(old => ({ ...old, nombre, ...(!product && old.slug === slugify(old.nombre) ? { slug: slugify(nombre) } : {}) })) }} /><Field label="Dirección corta (slug)" pattern="[a-z0-9]+(-[a-z0-9]+)*" required value={form.slug} onChange={e => change('slug', e.target.value)} /><Field label="Categoría" required value={form.categoria_id} onChange={e => change('categoria_id', e.target.value)}><option value="">Elegir categoría</option>{references.categorias.map(c => <option value={c.id} key={c.id}>{c.nombre}{!c.activa ? ' (desactivada)' : ''}</option>)}</Field></div>{!references.categorias.length && <p>Primero creá una categoría desde la sección Categorías.</p>}<Field label="Descripción" multiline value={form.descripcion || ''} onChange={e => change('descripcion', e.target.value)} /><Field label="Instrucciones de cuidado" multiline value={form.instrucciones_cuidado || ''} onChange={e => change('instrucciones_cuidado', e.target.value)} /><Check label="Producto destacado" checked={form.destacado} onChange={e => change('destacado', e.target.checked)} /><Check label="Publicado en el catálogo" checked={form.publicado} disabled={(!canPublish || product?.es_ejemplo) && !form.publicado} onChange={e => change('publicado', e.target.checked)} />{!canPublish && <p>Guardá el borrador y agregá al menos una imagen y una variante activa para habilitar la publicación.</p>}{product?.es_ejemplo && <p>Este es un ejemplo de prueba: permanece fuera del catálogo público. Creá un producto nuevo para publicar contenido real.</p>}<p>Una categoría desactivada oculta también sus productos.</p><Button type="submit">{action.busy ? 'Guardando…' : product ? 'Guardar producto' : 'Crear borrador'}</Button></fieldset></form><AdminFeedback action={action} />{product && <div className="admin-delete-zone"><p>Priorizá ocultar el producto si querés dejar de ofrecerlo.</p><Button variant="ghost" disabled={action.busy || product.publicado} onClick={() => setDeleting(true)}>Eliminar producto definitivamente</Button>{product.publicado && <p>Primero quitá «Publicado» y guardá para habilitar la eliminación.</p>}{deleting && <DeleteConfirm title={`¿Eliminar «${product.nombre}», sus variantes y las referencias a sus imágenes?`} busy={action.busy} onCancel={() => setDeleting(false)} onConfirm={() => action.run(async () => { await service.remove('productos', product); let notice='Producto eliminado.'; try { const results=await cleanImageQueue(client,50,(product.imagenes_producto || []).map(image=>image.storage_path)); if(results.some(r=>r.error) || (product.imagenes_producto || []).length>50) notice+=' Quedaron archivos pendientes de limpieza.' } catch { notice+=' Quedó pendiente limpiar los archivos; reintentá desde Limpieza.' }; onDeleted(notice) })} />}</div>}</section>
+}

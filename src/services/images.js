@@ -1,0 +1,84 @@
+// Se recibe el cliente autenticado; la conexión y las pantallas se integran en etapas 6/7.
+export const IMAGE_BUCKET = 'productos'
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+export const SIGNED_IMAGE_SECONDS = 60
+const accepted = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function imagePath(productId, imageId = crypto.randomUUID()) {
+  if (!uuid.test(productId) || !uuid.test(imageId)) throw new Error('Identificador de imagen o producto inválido.')
+  return `products/${productId.toLowerCase()}/${imageId.toLowerCase()}.webp`
+}
+
+export async function optimizeImage(file) {
+  if (!accepted.has(file.type)) throw new Error('Elegí una imagen JPEG, PNG o WebP.')
+  if (!file.size || file.size > 20 * 1024 * 1024) throw new Error('La imagen original debe pesar entre 1 byte y 20 MB.')
+  const bitmap = await createImageBitmap(file)
+  try {
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.82))
+    if (!blob || blob.type !== 'image/webp' || blob.size > MAX_IMAGE_BYTES) throw new Error('No se pudo convertir la imagen a WebP dentro del límite de 5 MB.')
+    return blob
+  } finally { bitmap.close() }
+}
+
+export async function uploadProductImage(client, { productId, blob, alt, order = 0 }) {
+  if (!alt?.trim()) throw new Error('Describí la imagen para su texto alternativo.')
+  if (!Number.isSafeInteger(order) || order < 0) throw new Error('El orden debe ser un entero no negativo.')
+  if (blob.type !== 'image/webp' || !blob.size || blob.size > MAX_IMAGE_BYTES) throw new Error('Primero optimizá la imagen a WebP, con un máximo de 5 MB.')
+  const path = imagePath(productId)
+  const storage = client.storage.from(IMAGE_BUCKET)
+  const uploaded = await storage.upload(path, blob, { upsert: false, contentType: 'image/webp', cacheControl: '60' })
+  if (uploaded.error) throw uploaded.error
+  let saved
+  try {
+    saved = await client.from('imagenes_producto').insert({ producto_id: productId, bucket_id: IMAGE_BUCKET, storage_path: path, texto_alternativo: alt.trim(), orden: order }).select().single()
+  } catch (error) { saved = { error } }
+  if (!saved.error) return saved.data
+  // Compensación por API: nunca borrar filas de storage.objects por SQL.
+  let removed
+  try { removed = await storage.remove([path]) } catch (error) { removed = { error } }
+  if (removed.error || (Array.isArray(removed.data) && removed.data.length === 0)) {
+    const queued = await client.from('archivos_pendientes_limpieza').insert({ bucket_id: IMAGE_BUCKET, storage_path: path, motivo: 'fallo_al_guardar_referencia' })
+    if (queued.error) throw new Error(`No se guardó la imagen ni se pudo registrar su limpieza. Ruta para revisar: ${path}`)
+  }
+  throw saved.error
+}
+
+export async function signedImageUrl(client, path) {
+  const { data, error } = await client.storage.from(IMAGE_BUCKET).createSignedUrl(path, SIGNED_IMAGE_SECONDS)
+  if (error) throw error
+  return data.signedUrl
+}
+
+export async function deleteProductImage(client, id) {
+  // El trigger encola el archivo; rechaza quitar la última foto de un producto publicado.
+  const { data, error } = await client.from('imagenes_producto').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('No se eliminó la referencia. Revisá el acceso y el identificador.')
+}
+
+export async function cleanImageQueue(client, limit = 50, paths) {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Límite de limpieza inválido.')
+  if (paths !== undefined && (!Array.isArray(paths) || paths.some(path => typeof path !== 'string'))) throw new Error('Rutas de limpieza inválidas.')
+  if (paths?.length === 0) return []
+  let request = client.from('archivos_pendientes_limpieza').select('*').order('creado_en').limit(limit)
+  if (paths) request = request.in('storage_path', paths)
+  const { data, error } = await request
+  if (error) throw error
+  const results = []
+  for (const row of data) {
+    const linked = await client.from('imagenes_producto').select('id').eq('bucket_id', row.bucket_id).eq('storage_path', row.storage_path).limit(1)
+    if (linked.error) { results.push({ path: row.storage_path, error: linked.error }); continue }
+    if (linked.data.length) { results.push({ path: row.storage_path, skipped: true }); continue }
+    const removed = await client.storage.from(row.bucket_id).remove([row.storage_path])
+    if (removed.error) { results.push({ path: row.storage_path, error: removed.error }); continue }
+    const done = await client.from('archivos_pendientes_limpieza').delete().eq('id', row.id).select('id')
+    results.push({ path: row.storage_path, error: done.error || (!done.data?.length ? new Error('No se pudo cerrar el pendiente de limpieza. Revisá tus permisos y reintentá.') : null) })
+  }
+  return results
+}

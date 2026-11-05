@@ -1,9 +1,55 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { imagePath, uploadProductImage, signedImageUrl, cleanImageQueue, MAX_IMAGE_BYTES } from '../src/services/images.js'
+import { imagePath, optimizeImage, uploadProductImage, signedImageUrl, cleanImageQueue, MAX_IMAGE_BYTES } from '../src/services/images.js'
 
 const productId = '00000000-0000-4000-8000-000000000001'
 const blob = new Blob(['test image payload'], { type: 'image/webp' })
+
+test('convierte formatos comunes y HEIC/HEIF con MIME ausente; libera recursos y rechaza fallos', async t => {
+ const bitmap = { width: 4000, height: 6000, close: t.mock.fn() }
+ const decode = t.mock.fn(async () => bitmap)
+ const draw = t.mock.fn()
+ let output = blob
+ const canvas = { getContext: () => ({ drawImage: draw }), toBlob: cb => cb(output) }
+ const previousBitmap = globalThis.createImageBitmap
+ globalThis.createImageBitmap = async file => {
+  if (/heic|heif/i.test(file.type + file.name)) throw new Error('Sin soporte nativo')
+  return bitmap
+ }
+ const previousDocument = globalThis.document
+ globalThis.document = { createElement: () => canvas }
+ try {
+  for (const type of ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/bmp']) {
+   assert.equal(await optimizeImage({ type, size: 100 }), blob)
+  }
+  for (const file of [
+   { type: 'image/heic', name: 'IMG_123.HEIC', size: 100 },
+   { type: 'image/heif', name: 'foto.heif', size: 100 },
+   { type: '', name: 'foto.HEIC', size: 100 },
+   { type: 'application/octet-stream', name: 'foto.heif', size: 100 },
+  ]) {
+   assert.equal(await optimizeImage(file, { heicDecoder: decode }), blob)
+  }
+  assert.equal(decode.mock.callCount(), 4)
+  assert.equal(canvas.width, 1067)
+  assert.equal(canvas.height, 1600)
+  assert.equal(bitmap.close.mock.callCount(), 10)
+  output = new Blob(['PNG fallback'], { type: 'image/png' })
+  await assert.rejects(optimizeImage({ type: 'image/jpeg', size: 100 }), /WebP/)
+  assert.equal(bitmap.close.mock.callCount(), 11)
+  await assert.rejects(optimizeImage({ type: 'image/heic', size: 100 }, {
+   heicDecoder: async () => { throw new Error('Archivo dañado') },
+  }), /HEIC\/HEIF/)
+  const before = decode.mock.callCount()
+  await assert.rejects(optimizeImage({ type: 'image/heic', size: 51 * 1024 * 1024 }, { heicDecoder: decode }), /50 MB/)
+  assert.equal(decode.mock.callCount(), before)
+ } finally {
+  if (previousBitmap === undefined) delete globalThis.createImageBitmap
+  else globalThis.createImageBitmap = previousBitmap
+  if (previousDocument === undefined) delete globalThis.document
+  else globalThis.document = previousDocument
+ }
+})
 
 function fakeClient({ saveError = null, removeError = null, queueError = null } = {}) {
   const calls = []
@@ -118,7 +164,7 @@ test('acepta originales de 30 y 50 MB y sube solamente el WebP optimizado', asyn
   assert.equal(closed, 2)
   await assert.rejects(optimizeImage({ type: 'image/jpeg', size: 50 * 1024 * 1024 + 1 }), /50 MB/)
   await assert.rejects(optimizeImage({ type: 'image/jpeg', size: 0 }), /50 MB/)
-  await assert.rejects(optimizeImage({ type: 'image/svg+xml', size: 100 }), /JPEG, PNG o WebP/)
+  await assert.rejects(optimizeImage({ type: 'application/pdf', size: 100 }), /archivo de imagen/)
   assert.equal(closed, 2)
  } finally {
   if (oldBitmap === undefined) delete globalThis.createImageBitmap; else globalThis.createImageBitmap = oldBitmap

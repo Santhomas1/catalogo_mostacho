@@ -3,7 +3,35 @@ export const IMAGE_BUCKET = 'productos'
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 export const MAX_SOURCE_IMAGE_BYTES = 50 * 1024 * 1024
 export const SIGNED_IMAGE_SECONDS = 60
-const accepted = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const imageExtension = /\.(jpe?g|png|webp|gif|avif|bmp|ico|svg|heic|heif)$/i
+
+async function decodeHeic(file) {
+  // Se carga solo cuando el navegador no puede abrir una foto de iPhone.
+  const { heicTo } = await import('heic-to/csp')
+  return heicTo({ blob: file, type: 'bitmap' })
+}
+
+async function decodeImage(file, heicDecoder) {
+  try {
+    return await createImageBitmap(file, { imageOrientation: 'from-image' })
+  } catch {
+    const heic = /^image\/hei[cf](?:-sequence)?$/i.test(file.type) || /\.hei[cf]$/i.test(file.name || '')
+    if (heic) {
+      try { return await heicDecoder(file) }
+      catch { throw new Error('No se pudo convertir la foto HEIC/HEIF. Probá con otra foto o exportala como JPEG.') }
+    }
+    // Safari y algunos formatos pueden necesitar el decodificador de <img>.
+    const url = URL.createObjectURL(file)
+    try {
+      const image = new Image()
+      image.src = url
+      await image.decode()
+      return { width: image.naturalWidth, height: image.naturalHeight, source: image, close() {} }
+    } catch {
+      throw new Error('No se pudo abrir la imagen. El formato no es compatible o el archivo está dañado.')
+    } finally { URL.revokeObjectURL(url) }
+  }
+}
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function imagePath(productId, imageId = crypto.randomUUID()) {
@@ -11,18 +39,21 @@ export function imagePath(productId, imageId = crypto.randomUUID()) {
   return `products/${productId.toLowerCase()}/${imageId.toLowerCase()}.webp`
 }
 
-export async function optimizeImage(file) {
-  if (!accepted.has(file.type)) throw new Error('Elegí una imagen JPEG, PNG o WebP.')
+export async function optimizeImage(file, { heicDecoder = decodeHeic } = {}) {
+  if (!file || (!file.type?.startsWith('image/') && !imageExtension.test(file.name || ''))) throw new Error('Elegí un archivo de imagen, como JPEG, PNG, WebP o HEIC/HEIF.')
   if (!file.size || file.size > MAX_SOURCE_IMAGE_BYTES) throw new Error('La imagen original debe pesar entre 1 byte y 50 MB.')
-  const bitmap = await createImageBitmap(file)
+  const bitmap = await decodeImage(file, heicDecoder)
   try {
+    if (!bitmap.width || !bitmap.height) throw new Error('La imagen no tiene dimensiones válidas.')
     const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
     const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.round(bitmap.width * scale))
     canvas.height = Math.max(1, Math.round(bitmap.height * scale))
-    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Este navegador no permite procesar imágenes.')
+    context.drawImage(bitmap.source || bitmap, 0, 0, canvas.width, canvas.height)
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.82))
-    if (!blob || blob.type !== 'image/webp' || blob.size > MAX_IMAGE_BYTES) throw new Error('No se pudo convertir la imagen a WebP dentro del límite de 5 MB.')
+    if (!blob || blob.type !== 'image/webp' || !blob.size || blob.size > MAX_IMAGE_BYTES) throw new Error('No se pudo convertir la imagen a WebP dentro del límite de 5 MB.')
     return blob
   } finally { bitmap.close() }
 }

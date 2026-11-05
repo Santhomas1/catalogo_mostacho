@@ -47,3 +47,10 @@ Lista pendiente en dispositivos/dominio real:
 Fuentes primarias: [Instalación PWA (MDN)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable), [Service Workers (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers), [Configuración Vercel](https://vercel.com/docs/project-configuration/vercel-json).
 
 Pruebas del botón: visible sin evento nativo, ayuda en Firefox e iPhone, diálogo nativo y ocultamiento tras instalar/abrir en modo independiente. El botón no puede ampliar las capacidades del navegador.
+# Conversión de imágenes al subir
+
+El administrador convierte las imágenes a WebP antes de subirlas. Admite los formatos que el navegador pueda decodificar (JPEG, PNG, WebP, GIF, AVIF, BMP y otros), y agrega un decodificador HEIC/HEIF para fotos de iPhone cuando falta soporte nativo. También reconoce archivos `.heic` y `.heif` sin tipo MIME.
+
+Se mantienen los límites de 50 MB por original, 1600 píxeles en el lado mayor y 5 MB por WebP final. Las imágenes animadas se guardan como una foto estática. Los archivos dañados o formatos sin decodificador disponible, como ciertos RAW o TIFF, muestran un error y no se suben.
+
+El decodificador `heic-to` se carga bajo demanda; documentación: https://github.com/hoppergee/heic-to. Las pruebas automatizadas cubren el flujo de conversión con un decodificador simulado; queda pendiente verificar fotos reales desde un iPhone.

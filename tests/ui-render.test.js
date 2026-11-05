@@ -32,6 +32,15 @@ test('tarjetas distinguen precio fijo, a acordar y opciones mixtas', () => {
  const mixed = renderCard([fixed, quote])
  assert.ok(mixed.includes('Desde'))
  assert.ok(mixed.includes('Otras opciones: acordar con el vendedor'))
+ for (const html of [onlyQuote, mixed, renderCard([fixed]), renderCard([])]) {
+  assert.ok(html.includes('Ver producto'))
+  assert.ok(html.includes('role="article"'))
+  assert.ok(!/lucide-star|rating|valoraci[oó]n|reseñas/i.test(html))
+ }
+ const withoutVariants = renderCard([])
+ assert.ok(withoutVariants.includes('Acordar con el vendedor'))
+ assert.ok(withoutVariants.includes('Consultar disponibilidad'))
+ assert.ok(!withoutVariants.includes('$'))
 })
 
 after(closeClient)

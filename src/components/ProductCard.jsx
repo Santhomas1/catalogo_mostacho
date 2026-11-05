@@ -23,15 +23,28 @@ export default function ProductCard({ product }) {
   const price = canPrice ? Math.min(...fixed.map(v => v.price)) : null
   const differentPrices = canPrice && (quoted || fixed.some(v => v.price !== price))
   const availability = !product.variants.length ? 'Consultar disponibilidad' : !variants.length ? 'No disponible' : 'Por pedido'
-  return <Card className="product-card">
-    <div className="product-media">{cover && !imageFailed ? <img className="product-photo" src={cover.url} alt={cover.alt} loading="lazy" onError={() => setImageFailed(true)} /> : <ProductVisual />}{product.demo && <span className="demo-badge">Producto de prueba</span>}</div>
-    <CardContent>
-      <p className="product-category">{product.category}</p>
-      <h2 className="product-name"><Link to={`/productos/${product.slug}`}>{product.name}</Link></h2>
-      <p className="product-price">{canPrice ? `${differentPrices ? 'Desde ' : ''}${formatPrice(price, fixed[0].currency)}` : AGREED_PRICE_LABEL}</p>
-      {canPrice && quoted && <p className="product-availability">Otras opciones: acordar con el vendedor</p>}
-      <p className="product-availability">{availability}</p>
-      <Button asChild variant="outline" className="product-button"><Link to={`/productos/${product.slug}`}>Ver opciones <ArrowRight /></Link></Button>
+  const href = `/productos/${product.slug}`
+  return <Card className="product-card" role="article" aria-label={product.name}>
+    <div className="product-media">
+      <Link className="product-image-link" to={href} aria-label={`Ver ${product.name}`} tabIndex={-1}>
+        {cover && !imageFailed ? <img className="product-photo" src={cover.url} alt={cover.alt} loading="lazy" decoding="async" width="640" height="640" onError={() => setImageFailed(true)} /> : <ProductVisual />}
+      </Link>
+      {product.demo && <span className="demo-badge">Producto de prueba</span>}
+    </div>
+    <CardContent className="product-card-content">
+      <div className="product-card-meta">
+        <p className="product-category">{product.category}</p>
+        <span className={`product-status${variants.length ? '' : ' product-status-muted'}`}>{availability}</span>
+      </div>
+      <h2 className="product-name"><Link to={href} title={product.name}>{product.name}</Link></h2>
+      <div className="product-card-bottom">
+        <div className="product-pricing">
+          <p className="product-price-caption">{canPrice ? 'Precio' : 'Precio a consultar'}</p>
+          <p className={`product-price${canPrice ? '' : ' product-price-quote'}`}>{canPrice ? `${differentPrices ? 'Desde ' : ''}${formatPrice(price, fixed[0].currency)}` : AGREED_PRICE_LABEL}</p>
+          {canPrice && quoted && <p className="product-price-note">Otras opciones: acordar con el vendedor</p>}
+        </div>
+        <Button asChild className="product-button"><Link to={href} aria-label={`Ver producto: ${product.name}`}>Ver producto <ArrowRight aria-hidden="true" /></Link></Button>
+      </div>
     </CardContent>
   </Card>
 }

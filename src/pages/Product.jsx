@@ -10,6 +10,7 @@ import EmptyPage from '@/pages/EmptyPage'
 import { variantPriceLabel, productionLabel, AGREED_PRICE_LABEL, isAgreedPrice } from '@/lib/pricing'
 import PageMetadata from '@/components/PageMetadata'
 import { productMetadata } from '@/lib/metadata'
+import { business } from '@/lib/business'
 export default function Product() {
   const { slug } = useParams()
   const loader = useCallback(() => catalogService().bySlug(slug), [slug])
@@ -63,7 +64,7 @@ function ProductDetail({ product }) {
           <div className="detail-purchase-row"><div><label className="detail-label" htmlFor="quantity">Cantidad</label><div className="detail-quantity"><button type="button" aria-label="Reducir cantidad" disabled={!Number.isSafeInteger(amount) || amount <= 1} onClick={() => setQuantity(String(amount - 1))}>−</button><input id="quantity" type="number" min="1" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} /><button type="button" aria-label="Aumentar cantidad" disabled={!Number.isSafeInteger(amount) || amount < 1 || amount >= Number.MAX_SAFE_INTEGER} onClick={() => setQuantity(String(amount + 1))}>+</button></div></div><Button className="detail-primary" disabled={!valid} onClick={() => { add(variant.id, amount, product); setNotice('Agregado al carrito. Podés seguir eligiendo.') }}>Agregar al carrito</Button></div>
           {!valid && <p className="detail-feedback" role="status">Ingresá una cantidad entera positiva para una opción disponible.</p>}
           <p className="detail-feedback" role="status">{notice}</p><Link className="detail-secondary-link" to="/carrito">Ver carrito</Link>
-        </div> : <div className="detail-inquiry"><p>Consultá las opciones de este producto y coordinamos los detalles con vos.</p><Button asChild className="detail-primary"><Link to="/contacto">Consultar este producto</Link></Button></div>}
+        </div> : <div className="detail-inquiry"><p>Consultá las opciones de este producto y coordinamos los detalles con vos.</p><Button asChild className="detail-primary"><a href={`${business.whatsapp}?text=${encodeURIComponent(product.name)}`} target="_blank" rel="noreferrer">Consultar este producto</a></Button></div>}
         <p className="detail-order-note">Hecho por pedido. Confirmamos el precio final y la fecha antes de producir.</p>
         <div className="detail-details">
           {product.description?.trim() && <details open><summary>Sobre este producto</summary><p>{product.description}</p></details>}

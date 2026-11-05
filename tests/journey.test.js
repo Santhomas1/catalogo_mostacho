@@ -93,6 +93,13 @@ test('producto publicado sin variantes ni cuidados muestra consulta y omite cuid
  try{
   assert.ok(text(view).includes('Diseño Ñ 7'))
   assert.ok(text(view).includes('Consultar este producto'))
+  const inquiry=view.renderer.root.findAllByType('a').find(a=>a.children.includes('Consultar este producto'))
+  assert.ok(inquiry)
+  const destination=new URL(inquiry.props.href)
+  assert.equal(destination.origin,'https://wa.me')
+  assert.equal(destination.pathname,'/5493816795568')
+  assert.equal(destination.searchParams.get('text'),row.nombre)
+  assert.equal(inquiry.props.target,'_blank')
   assert.ok(!text(view).includes('Cuidados'))
   assert.ok(!button(view,'Agregar al carrito'))
  }finally{await view.close()}

@@ -74,3 +74,7 @@ Consultar `VERIFICACION_ETAPA_8.md`: 54 pruebas automáticas, build y permisos S
 ## Repositorio en GitHub
 
 La preparación y los pasos de primera subida están en [PREPARACION_GITHUB.md](PREPARACION_GITHUB.md). GitHub Actions ejecuta instalación, pruebas y build con datos ficticios, sin conectarse a Supabase ni desplegar. El archivo `.env.local` se configura en cada computadora y permanece fuera de Git. Las migraciones versionadas no incluyen los correos personales de los administradores; el bootstrap privado de una instalación nueva se realiza por separado.
+
+## Aplicación instalable (PWA)
+
+Configuración, instalación en Android/iPhone y comprobaciones en [PWA_MOSTACHO.md](PWA_MOSTACHO.md). Incluye manifest, iconos, registro en producción, invitación de instalación compatible y pantalla sin conexión. El catálogo y la administración siguen necesitando Internet; no se cachean datos de Supabase. Vercel sirve las rutas de React mediante `vercel.json`. No requiere variables de entorno adicionales ni ejecutar migraciones.

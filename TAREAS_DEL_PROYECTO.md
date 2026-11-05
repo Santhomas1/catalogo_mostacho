@@ -258,3 +258,7 @@ Preparados índice y remoto `https://github.com/Santhomas1/catalogo_mostacho.git
 ### Adaptación para celular — 2026-11-05
 
 Ajustados estilos para pantallas de hasta 640 px: catálogo en una columna, controles táctiles de al menos 44 px, campos a 16 px para evitar el zoom automático de iOS, carrito con cantidad/subtotal separados, botones que admiten texto en varias líneas y pestañas administrativas en dos columnas. Mejorados espacios de inicio/contacto, galería desplazable y contención de nombres/SKU largos. 55 pruebas y build correctos. El host de navegador no estuvo disponible; siguen pendientes la inspección visual a 360/390/640 px, zoom y teclado real. Cambio local, sin commit ni push en esta sesión.
+
+### Configuración PWA — 2026-11-05
+
+Preparados manifest, iconos normal/maskable/iOS, invitación de instalación, service worker de producción y pantalla offline sin caché de datos comerciales o sesiones. Configuradas rutas y cabeceras de Vercel. 61 pruebas y build correctos; detalles y ensayo de instalación pendiente en PWA_MOSTACHO.md. No se hizo commit, push ni despliegue en esta sesión.

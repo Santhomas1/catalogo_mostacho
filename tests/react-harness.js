@@ -7,6 +7,7 @@ import { renderToString } from 'react-dom/server';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { create, act } from 'react-test-renderer';
 import App from './src/App.jsx';
+import InstallApp from './src/components/InstallApp.jsx';
 import AdminPage from './src/admin/AdminPage.jsx';
 import { LoginForm, RecoveryForm, PasswordForm } from './src/admin/AuthForms.jsx';
 import VariantPanel from './src/admin/VariantPanel.jsx';
@@ -59,6 +60,18 @@ export async function mountApp(path, items, fetcher) {
  await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
  return { renderer, memory, context: () => ctx, path: () => currentPath, close: () => act(async () => renderer.unmount()) };
 }
+export async function mountInstall(options = {}) {
+ setup([]);
+ const original = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+ Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent: options.userAgent || 'Firefox', platform: options.platform || 'Win32', maxTouchPoints: options.maxTouchPoints || 0 } });
+ window.matchMedia = () => ({ matches: Boolean(options.standalone) });
+ const events = new Map();
+ window.addEventListener = (name, fn) => events.set(name, fn);
+ window.removeEventListener = name => events.delete(name);
+ let renderer;
+ await act(async () => { renderer = create(<InstallApp />); });
+ return { renderer, events, close: async () => { await act(async () => renderer.unmount()); if(original)Object.defineProperty(globalThis,'navigator',original);else delete globalThis.navigator; } };
+}
 export async function mountCart(items, fetcher, options = {}) {
  const memory = setup(items, options); globalThis.fetch = fetcher;
  let renderer;
@@ -70,4 +83,4 @@ export async function mountCart(items, fetcher, options = {}) {
 const result = await build({ stdin: { contents, resolveDir: process.cwd(), loader: 'jsx' }, jsx: 'automatic', bundle: true, packages: 'external', write: false, platform: 'node', format: 'cjs', define: { 'import.meta.env.DEV': 'false', 'import.meta.env.VITE_SUPABASE_URL': '"https://example.invalid"', 'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': '"sb_publishable_test"' }, alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } })
 const compiled = { exports: {} }
 new Function('require', 'module', 'exports', result.outputFiles[0].text)(createRequire(import.meta.url), compiled, compiled.exports)
-export const { render, renderCard, mountCart, mountApp, mountAdmin, mountAuthForm, mountEditor, act, closeClient } = compiled.exports
+export const { render, renderCard, mountCart, mountInstall, mountApp, mountAdmin, mountAuthForm, mountEditor, act, closeClient } = compiled.exports

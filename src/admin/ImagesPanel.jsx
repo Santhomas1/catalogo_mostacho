@@ -22,7 +22,7 @@ export default function ImagesPanel({ product, client, service, onChanged }) {
     const ids=images.map(image=>image.id); [ids[index],ids[index+delta]]=[ids[index+delta],ids[index]]
     action.run(async()=>{ await service.reorder(product.id,ids); onChanged('Orden de imágenes guardado. La primera es la portada.') })
   }
-  return <section><h3>Imágenes</h3><p>La primera foto es la portada. Las imágenes de borradores son privadas. Se optimizan a WebP, hasta 1600 píxeles y 5 MB.</p><form className="admin-editor" onSubmit={e=>{e.preventDefault();action.run(async()=>{
+  return <section><h3>Imágenes</h3><p>Podés elegir fotos JPEG, PNG o WebP de hasta 50 MB cada una. Las comprimimos automáticamente antes de subirlas; no necesitás reducirlas por tu cuenta. La primera foto es la portada y las imágenes de borradores son privadas.</p><form className="admin-editor" onSubmit={e=>{e.preventDefault();action.run(async()=>{
     if(!file) throw new Error('Elegí una imagen.')
     const blob=await optimizeImage(file)
     await uploadProductImage(client,{productId:product.id,blob,alt,order:Math.max(-1,...images.map(image=>image.orden))+1})

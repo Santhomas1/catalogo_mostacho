@@ -93,3 +93,35 @@ test('la limpieza de una imagen se limita a las rutas solicitadas y no procesa o
  assert.deepEqual(filter, { field: 'storage_path', paths: ['products/only-this.webp'] })
  assert.deepEqual(await cleanImageQueue({}, 50, []), [])
 })
+
+test('acepta originales de 30 y 50 MB y sube solamente el WebP optimizado', async () => {
+ const { optimizeImage } = await import('../src/services/images.js')
+ const oldBitmap = globalThis.createImageBitmap
+ const oldDocument = globalThis.document
+ let closed = 0
+ let drawn = 0
+ const canvas = { width: 0, height: 0, getContext: () => ({ drawImage() { drawn++ } }), toBlob: callback => callback(blob) }
+ globalThis.createImageBitmap = async () => ({ width: 6000, height: 4000, close() { closed++ } })
+ globalThis.document = { createElement: () => canvas }
+ try {
+  for (const size of [30, 50]) {
+   const optimized = await optimizeImage({ type: 'image/jpeg', size: size * 1024 * 1024 })
+   assert.equal(optimized, blob)
+   assert.equal(canvas.width, 1600)
+   assert.equal(canvas.height, 1067)
+   assert.ok(optimized.size < MAX_IMAGE_BYTES)
+   const client = fakeClient()
+   await uploadProductImage(client, { productId, blob: optimized, alt: 'Foto grande' })
+   assert.equal(client.calls[0][0], 'upload')
+  }
+  assert.equal(drawn, 2)
+  assert.equal(closed, 2)
+  await assert.rejects(optimizeImage({ type: 'image/jpeg', size: 50 * 1024 * 1024 + 1 }), /50 MB/)
+  await assert.rejects(optimizeImage({ type: 'image/jpeg', size: 0 }), /50 MB/)
+  await assert.rejects(optimizeImage({ type: 'image/svg+xml', size: 100 }), /JPEG, PNG o WebP/)
+  assert.equal(closed, 2)
+ } finally {
+  if (oldBitmap === undefined) delete globalThis.createImageBitmap; else globalThis.createImageBitmap = oldBitmap
+  if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument
+ }
+})

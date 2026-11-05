@@ -34,7 +34,7 @@ El trigger de referencia bloquea el registro del objeto para evitar que su borra
 
 `src/services/images.js` recibe un cliente Supabase autenticado; no crea una conexión, ni guarda claves, ni integra todavía la interfaz de administración.
 
-- `optimizeImage`: decodifica JPEG/PNG/WebP, limita el lado mayor a 1600 píxeles sin ampliar y exporta WebP con calidad 0,82. La imagen original admite hasta 20 MiB; el resultado debe quedar dentro de los 5 MiB del bucket.
+- `optimizeImage`: decodifica JPEG/PNG/WebP, limita el lado mayor a 1600 píxeles sin ampliar y exporta WebP con calidad 0,82. La imagen original admite hasta 50 MiB (ampliado el 2026-11-05); el resultado debe quedar dentro de los 5 MiB del bucket.
 - `uploadProductImage`: exige texto alternativo y orden válido, genera un UUID nuevo, sube con `upsert: false` y guarda la referencia después. Si falla la referencia, intenta eliminar el archivo por la API. Si falla esa compensación, registra la ruta para limpieza; si tampoco puede registrar, informa la ruta para revisión.
 - `signedImageUrl`: obtiene un enlace temporal sujeto a los permisos del usuario actual.
 - `deleteProductImage`: elimina la referencia; el trigger encola la ruta. Sigue vigente la prohibición de quitar la última foto de una ficha publicada.

@@ -1,6 +1,7 @@
 // Se recibe el cliente autenticado; la conexión y las pantallas se integran en etapas 6/7.
 export const IMAGE_BUCKET = 'productos'
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+export const MAX_SOURCE_IMAGE_BYTES = 50 * 1024 * 1024
 export const SIGNED_IMAGE_SECONDS = 60
 const accepted = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -12,7 +13,7 @@ export function imagePath(productId, imageId = crypto.randomUUID()) {
 
 export async function optimizeImage(file) {
   if (!accepted.has(file.type)) throw new Error('Elegí una imagen JPEG, PNG o WebP.')
-  if (!file.size || file.size > 20 * 1024 * 1024) throw new Error('La imagen original debe pesar entre 1 byte y 20 MB.')
+  if (!file.size || file.size > MAX_SOURCE_IMAGE_BYTES) throw new Error('La imagen original debe pesar entre 1 byte y 50 MB.')
   const bitmap = await createImageBitmap(file)
   try {
     const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))

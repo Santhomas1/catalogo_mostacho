@@ -47,10 +47,20 @@ Lista pendiente en dispositivos/dominio real:
 Fuentes primarias: [Instalación PWA (MDN)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable), [Service Workers (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers), [Configuración Vercel](https://vercel.com/docs/project-configuration/vercel-json).
 
 Pruebas del botón: visible sin evento nativo, ayuda en Firefox e iPhone, diálogo nativo y ocultamiento tras instalar/abrir en modo independiente. El botón no puede ampliar las capacidades del navegador.
-# Conversión de imágenes al subir
+## Icono de inicio en iPhone
+
+El HTML declara un PNG de 180×180 en `/apple-touch-icon.png?v=2`; la copia sin parámetros en la raíz permite el descubrimiento convencional de iOS. El generador mantiene esta copia sincronizada con `/pwa/apple-touch-icon.png`. El parámetro de versión cambia la URL respecto del icono anterior.
+
+Si una instalación anterior muestra una letra, después de publicar el cambio quitá ese acceso de inicio, abrí el sitio actualizado en Safari y usá Compartir → Agregar a inicio. La comprobación local no confirma el resultado en un iPhone ni que el despliegue público incluya estos archivos.
+
+## Conversión de imágenes al subir
 
 El administrador convierte las imágenes a WebP antes de subirlas. Admite los formatos que el navegador pueda decodificar (JPEG, PNG, WebP, GIF, AVIF, BMP y otros), y agrega un decodificador HEIC/HEIF para fotos de iPhone cuando falta soporte nativo. También reconoce archivos `.heic` y `.heif` sin tipo MIME.
 
 Se mantienen los límites de 50 MB por original, 1600 píxeles en el lado mayor y 5 MB por WebP final. Las imágenes animadas se guardan como una foto estática. Los archivos dañados o formatos sin decodificador disponible, como ciertos RAW o TIFF, muestran un error y no se suben.
 
 El decodificador `heic-to` se carga bajo demanda; documentación: https://github.com/hoppergee/heic-to. Las pruebas automatizadas cubren el flujo de conversión con un decodificador simulado; queda pendiente verificar fotos reales desde un iPhone.
+
+Si el navegador devuelve PNG al pedir WebP, devuelve un archivo vacío o falla la exportación de canvas, se carga bajo demanda `@jsquash/webp` y se codifican los píxeles con WebAssembly. Vite publica ambos binarios (con y sin SIMD) mediante URLs de assets. No se cambia la extensión de un PNG: el resultado es WebP real. El error de tamaño se muestra únicamente si el WebP generado supera 5 MB; un fallo del codificador muestra un mensaje diferente.
+
+La regresión comprueba exportación nativa a PNG/null/error, uso del codificador alternativo, rechazo de resultados inválidos y conservación de la subida WebP. También ejecuta el codificador WASM real y verifica la cabecera RIFF/WEBP del archivo resultante. La carga desde Safari/iPhone queda pendiente de comprobación en dispositivo.

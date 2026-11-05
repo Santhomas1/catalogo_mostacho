@@ -27,6 +27,21 @@ test('manifest instalable e iconos PNG cuadrados con dimensiones declaradas',()=
  }
  assert.ok(read('index.html').includes('rel="manifest"'));assert.ok(read('index.html').includes('rel="apple-touch-icon"'))
 })
+
+test('iPhone recibe el PNG declarado y el icono convencional de la raíz', () => {
+ const html = read('index.html')
+ const tag = html.match(/<link\b[^>]*rel="apple-touch-icon"[^>]*>/)?.[0]
+ assert.ok(tag)
+ assert.match(tag, /sizes="180x180"/)
+ assert.match(tag, /type="image\/png"/)
+ const href = tag.match(/href="([^"]+)"/)[1]
+ const path = new URL(href, 'https://mostacho.example').pathname
+ assert.equal(path, '/apple-touch-icon.png')
+ const png = readFileSync(new URL('../public' + path, import.meta.url))
+ assert.equal(png.readUInt32BE(16), 180)
+ assert.equal(png.readUInt32BE(20), 180)
+ assert.deepEqual(png, readFileSync(new URL('../public/pwa/apple-touch-icon.png', import.meta.url)))
+})
 test('worker instala solo pantalla pública sin conexión y limpia solo su caché antigua',async()=>{
  const w=worker();let promise
  w.handlers.install({waitUntil:value=>{promise=value}});await promise

@@ -5,6 +5,58 @@ import { imagePath, optimizeImage, uploadProductImage, signedImageUrl, cleanImag
 const productId = '00000000-0000-4000-8000-000000000001'
 const blob = new Blob(['test image payload'], { type: 'image/webp' })
 
+test('si el navegador devuelve PNG, null o lanza un error genera WebP con el codificador alternativo', async t => {
+ const oldBitmap = globalThis.createImageBitmap, oldDocument = globalThis.document
+ const bitmap = { width: 2, height: 2, close: t.mock.fn() }
+ const pixels = { width: 2, height: 2, data: new Uint8ClampedArray(16) }
+ let nativeResult = new Blob(['png'], { type: 'image/png' })
+ const encoder = t.mock.fn(async data => { assert.equal(data, pixels); return blob })
+ globalThis.createImageBitmap = async () => bitmap
+ globalThis.document = { createElement: () => ({
+  getContext: () => ({ drawImage() {}, getImageData: () => pixels }),
+  toBlob: cb => { if (nativeResult instanceof Error) throw nativeResult; cb(nativeResult) },
+ }) }
+ try {
+  const file = { type: 'image/jpeg', size: 100 }
+  for (const result of [nativeResult, null, new Error('Sin exportación'), new Blob([], { type: 'image/webp' })]) {
+   nativeResult = result
+   const converted = await optimizeImage(file, { webpEncoder: encoder })
+   assert.equal(converted, blob)
+   const client = fakeClient()
+   await uploadProductImage(client, { productId, blob: converted, alt: 'Foto iPhone' })
+   assert.equal(client.calls[0][3].contentType, 'image/webp')
+  }
+  assert.equal(encoder.mock.callCount(), 4)
+  nativeResult = blob
+  await optimizeImage(file, { webpEncoder: encoder })
+  assert.equal(encoder.mock.callCount(), 4)
+  nativeResult = null
+  await assert.rejects(optimizeImage(file, { webpEncoder: async () => { throw Error('Sin red') } }), /conexión/)
+  await assert.rejects(optimizeImage(file, { webpEncoder: async () => new Blob(['png'], { type: 'image/png' }) }), /WebP válida/)
+  await assert.rejects(optimizeImage(file, { webpEncoder: async () => ({ type: 'image/webp', size: MAX_IMAGE_BYTES + 1 }) }), /supera los 5 MB/)
+  assert.equal(bitmap.close.mock.callCount(), 8)
+ } finally {
+  if (oldBitmap === undefined) delete globalThis.createImageBitmap; else globalThis.createImageBitmap = oldBitmap
+  if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument
+ }
+})
+
+test('el codificador WASM real produce un archivo RIFF/WEBP desde píxeles', async () => {
+ const { readFile } = await import('node:fs/promises')
+ const { simd } = await import('wasm-feature-detect')
+ const { default: encode, init } = await import('@jsquash/webp/encode.js')
+ const variant = await simd() ? 'webp_enc_simd.wasm' : 'webp_enc.wasm'
+ const bytes = await readFile(new URL('../node_modules/@jsquash/webp/codec/enc/' + variant, import.meta.url))
+ await init(await WebAssembly.compile(bytes))
+ const result = Buffer.from(await encode({ width: 2, height: 2, data: new Uint8ClampedArray([
+  255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+ ]) }, { quality: 82 }))
+ assert.equal(result.toString('ascii', 0, 4), 'RIFF')
+ assert.equal(result.toString('ascii', 8, 12), 'WEBP')
+ assert.equal(result.readUInt32LE(4) + 8, result.length)
+ assert.ok(result.length < MAX_IMAGE_BYTES)
+})
+
 test('convierte formatos comunes y HEIC/HEIF con MIME ausente; libera recursos y rechaza fallos', async t => {
  const bitmap = { width: 4000, height: 6000, close: t.mock.fn() }
  const decode = t.mock.fn(async () => bitmap)

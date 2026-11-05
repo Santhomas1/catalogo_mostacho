@@ -17,3 +17,5 @@ try {
     } finally { $graphics.Dispose(); $bitmap.Dispose() }
   }
 } finally { $source.Dispose() }
+# Ruta convencional de iOS, además de la copia histórica dentro de /pwa.
+Copy-Item -LiteralPath (Join-Path $projectRoot 'public/pwa/apple-touch-icon.png') -Destination (Join-Path $projectRoot 'public/apple-touch-icon.png') -Force

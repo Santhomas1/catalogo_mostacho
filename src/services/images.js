@@ -5,6 +5,11 @@ export const MAX_SOURCE_IMAGE_BYTES = 50 * 1024 * 1024
 export const SIGNED_IMAGE_SECONDS = 60
 const imageExtension = /\.(jpe?g|png|webp|gif|avif|bmp|ico|svg|heic|heif)$/i
 
+async function encodeWebpFallback(imageData) {
+  const { encodeWebp } = await import('./webp-encoder.js')
+  return encodeWebp(imageData)
+}
+
 async function decodeHeic(file) {
   // Se carga solo cuando el navegador no puede abrir una foto de iPhone.
   const { heicTo } = await import('heic-to/csp')
@@ -39,7 +44,7 @@ export function imagePath(productId, imageId = crypto.randomUUID()) {
   return `products/${productId.toLowerCase()}/${imageId.toLowerCase()}.webp`
 }
 
-export async function optimizeImage(file, { heicDecoder = decodeHeic } = {}) {
+export async function optimizeImage(file, { heicDecoder = decodeHeic, webpEncoder = encodeWebpFallback } = {}) {
   if (!file || (!file.type?.startsWith('image/') && !imageExtension.test(file.name || ''))) throw new Error('Elegí un archivo de imagen, como JPEG, PNG, WebP o HEIC/HEIF.')
   if (!file.size || file.size > MAX_SOURCE_IMAGE_BYTES) throw new Error('La imagen original debe pesar entre 1 byte y 50 MB.')
   const bitmap = await decodeImage(file, heicDecoder)
@@ -52,8 +57,18 @@ export async function optimizeImage(file, { heicDecoder = decodeHeic } = {}) {
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Este navegador no permite procesar imágenes.')
     context.drawImage(bitmap.source || bitmap, 0, 0, canvas.width, canvas.height)
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.82))
-    if (!blob || blob.type !== 'image/webp' || !blob.size || blob.size > MAX_IMAGE_BYTES) throw new Error('No se pudo convertir la imagen a WebP dentro del límite de 5 MB.')
+    let blob
+    try { blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.82)) }
+    catch { /* Si falla la exportación nativa, usar el codificador independiente. */ }
+    if (!blob || blob.type !== 'image/webp' || !blob.size) {
+      try {
+        blob = await webpEncoder(context.getImageData(0, 0, canvas.width, canvas.height))
+      } catch {
+        throw new Error('No se pudo iniciar la conversión a WebP. Revisá la conexión y volvé a intentar.')
+      }
+    }
+    if (!blob || blob.type !== 'image/webp' || !blob.size) throw new Error('El codificador no pudo generar una imagen WebP válida.')
+    if (blob.size > MAX_IMAGE_BYTES) throw new Error('La imagen convertida supera los 5 MB. Probá con una imagen de menor tamaño.')
     return blob
   } finally { bitmap.close() }
 }

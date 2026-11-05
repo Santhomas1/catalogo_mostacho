@@ -254,3 +254,7 @@ Verificación automática y de permisos reales realizada; 54 pruebas y build cor
 ### Preparación para GitHub — 2026-11-05
 
 Preparados índice y remoto `https://github.com/Santhomas1/catalogo_mostacho.git` (sin ramas al consultar). Agregados CI de pruebas/build sin credenciales reales, atributos de finales de línea y exclusiones para archivos locales/respaldos. Retirados correos personales del bootstrap histórico local, sin ejecutar cambios remotos ni alterar accesos. 54 pruebas y build aprobados; detalle del bloqueo local de npm ci y comandos de primera subida en PREPARACION_GITHUB.md. Sin commit, push ni despliegue.
+
+### Adaptación para celular — 2026-11-05
+
+Ajustados estilos para pantallas de hasta 640 px: catálogo en una columna, controles táctiles de al menos 44 px, campos a 16 px para evitar el zoom automático de iOS, carrito con cantidad/subtotal separados, botones que admiten texto en varias líneas y pestañas administrativas en dos columnas. Mejorados espacios de inicio/contacto, galería desplazable y contención de nombres/SKU largos. 55 pruebas y build correctos. El host de navegador no estuvo disponible; siguen pendientes la inspección visual a 360/390/640 px, zoom y teclado real. Cambio local, sin commit ni push en esta sesión.

@@ -98,7 +98,7 @@ test('producto publicado sin variantes ni cuidados muestra consulta y omite cuid
   const destination=new URL(inquiry.props.href)
   assert.equal(destination.origin,'https://wa.me')
   assert.equal(destination.pathname,'/5493816795568')
-  assert.equal(destination.searchParams.get('text'),row.nombre)
+  assert.equal(destination.searchParams.get('text'),`estoy interesado en este producto ("${row.nombre}")`)
   assert.equal(inquiry.props.target,'_blank')
   assert.ok(!text(view).includes('Cuidados'))
   assert.ok(!button(view,'Agregar al carrito'))

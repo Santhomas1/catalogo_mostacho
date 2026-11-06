@@ -30,7 +30,7 @@ function setup(items, options = {}) {
  return memory;
 }
 export function render(path, items = []) { setup(items); return renderToString(<MemoryRouter initialEntries={[path]}><CartProvider><App /></CartProvider></MemoryRouter>); }
-export function renderCard(variants) { return renderToString(<MemoryRouter><ProductCard product={{ name: 'Prueba', slug: 'prueba', category: 'Prueba', variants }} /></MemoryRouter>); }
+export function renderCard(variants, details = {}) { return renderToString(<MemoryRouter><ProductCard product={{ name: 'Prueba', slug: 'prueba', category: 'Prueba', variants, ...details }} /></MemoryRouter>); }
 export async function mountAdmin(client, path = '/admin') {
  setup([]);
  let renderer;

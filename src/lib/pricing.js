@@ -1,5 +1,6 @@
 export const AGREED_PRICE_LABEL = 'Acordar con el vendedor'
 export const isAgreedPrice = variant => variant.priceMode === 'a_acordar'
+export const hasFixedProductPrice = product => product.priceMode === 'fijo' && Number.isFinite(product.price) && product.price >= 0 && /^[A-Z]{3}$/.test(product.currency || '')
 export const formatPrice = (price, currency) => new Intl.NumberFormat('es-AR', { style: 'currency', currency }).format(price)
 export const variantPriceLabel = variant => isAgreedPrice(variant) ? AGREED_PRICE_LABEL : formatPrice(variant.price, variant.currency)
 export const productionLabel = variant => variant.availability === 'no_disponible' ? 'No disponible' : Number.isInteger(variant.days) ? `Por pedido: ${variant.days} días estimados` : 'Por pedido · Plazo a coordinar'

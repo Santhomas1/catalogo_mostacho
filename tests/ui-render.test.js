@@ -41,6 +41,11 @@ test('tarjetas distinguen precio fijo, a acordar y opciones mixtas', () => {
  assert.ok(withoutVariants.includes('Acordar con el vendedor'))
  assert.ok(withoutVariants.includes('Consultar disponibilidad'))
  assert.ok(!withoutVariants.includes('$'))
+ const basePrice = {priceMode:'fijo',price:12500.5,currency:'ARS'}
+ assert.ok(renderCard([],basePrice).includes('12.500,50'))
+ assert.ok(!renderCard([],basePrice).includes('Acordar con el vendedor'))
+ assert.ok(renderCard([fixed],basePrice).includes('5.000,00'))
+ assert.ok(renderCard([], {...basePrice,price:0}).includes('0,00'))
 })
 
 after(closeClient)

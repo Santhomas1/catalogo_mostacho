@@ -389,3 +389,8 @@ main, fieldset, .product-detail > *, .cart-layout > *, .cart-line > *,
   .catalog-search { grid-column: 1 / -1; }
   .catalog-filters .catalog-search input, .catalog-filters .catalog-category select { font-size: 16px; }
 }
+
+/* Jerarquía de títulos y selección en desplegables. */
+:is(.admin-field, .catalog-filters, .product-detail) select { font-weight: 650; }
+.admin-field:has(> select) > span, .detail-order > .detail-label, .detail-details summary { font-weight: 650; }
+select option { font-weight: 400; }

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { formatPrice, isAgreedPrice, AGREED_PRICE_LABEL } from '@/lib/pricing'
+import { formatPrice, isAgreedPrice, AGREED_PRICE_LABEL, hasFixedProductPrice } from '@/lib/pricing'
 
 export { formatPrice } from '@/lib/pricing'
 
@@ -16,7 +16,7 @@ export default function ProductCard({ product }) {
   const cover = product.images?.[0]
   useEffect(() => { setImageFailed(false) }, [cover?.url])
   const variants = product.variants.filter(v => v.active && v.availability !== 'no_disponible')
-  const fixed = variants.filter(v => !isAgreedPrice(v))
+  const fixed = !product.variants.length && hasFixedProductPrice(product) ? [product] : variants.filter(v => !isAgreedPrice(v))
   const quoted = variants.some(isAgreedPrice)
   const currencies = new Set(fixed.map(v => v.currency))
   const canPrice = fixed.length > 0 && currencies.size === 1

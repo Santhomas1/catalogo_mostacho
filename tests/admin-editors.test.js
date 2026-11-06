@@ -35,6 +35,23 @@ test('publica con foto sin variantes y guarda los cuidados vacíos como null',as
   assert.equal(saved.values.instrucciones_cuidado,null)
  }finally{await view.close()}
 })
+test('producto sin variantes permite guardar precio fijo y volver a acordar con el vendedor',async()=>{
+ let saved
+ const product={id:pid,nombre:'Maceta',slug:'maceta',categoria_id:'cat',publicado:false,imagenes_producto:[],variantes_producto:[],tipo_precio:'a_acordar',precio:null,moneda:null}
+ const service={references:async()=>refs,product:async()=>product,save:async(table,values)=>{saved=values;return product}}
+ const view=await mountEditor('product',{id:pid,service,client:{},onClose(){},onCreated(){}})
+ try{
+  await act(async()=>field(view,'Modalidad de precio del producto').props.onChange({target:{value:'fijo'}}))
+  assert.equal(field(view,'Moneda del producto').props.value,'ARS')
+  await act(async()=>field(view,'Precio del producto').props.onChange({target:{value:'12500.50'}}))
+  await act(async()=>root(view).findByType('form').props.onSubmit({preventDefault(){}}))
+  assert.equal(saved.tipo_precio,'fijo');assert.equal(saved.precio,12500.5);assert.equal(saved.moneda,'ARS')
+  await act(async()=>field(view,'Modalidad de precio del producto').props.onChange({target:{value:'a_acordar'}}))
+  await act(async()=>root(view).findByType('form').props.onSubmit({preventDefault(){}}))
+  assert.equal(saved.tipo_precio,'a_acordar');assert.equal(saved.precio,null);assert.equal(saved.moneda,null)
+ }finally{await view.close()}
+})
+
 test('formulario de variante a acordar envía nulos y no solicita stock',async()=>{
  let saved
  const view=await mountEditor('variant',{product:{id:pid,variantes_producto:[]},references:refs,service:{save:async(table,values)=>{saved={table,values}}},onChanged(){}})

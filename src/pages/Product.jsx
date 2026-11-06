@@ -7,7 +7,7 @@ import { ProductVisual } from '@/components/ProductCard'
 import { useCart } from '@/components/CartProvider'
 import { Button } from '@/components/ui/button'
 import EmptyPage from '@/pages/EmptyPage'
-import { variantPriceLabel, productionLabel, AGREED_PRICE_LABEL, isAgreedPrice } from '@/lib/pricing'
+import { variantPriceLabel, productionLabel, AGREED_PRICE_LABEL, isAgreedPrice, hasFixedProductPrice } from '@/lib/pricing'
 import PageMetadata from '@/components/PageMetadata'
 import { productMetadata } from '@/lib/metadata'
 import { business } from '@/lib/business'
@@ -28,6 +28,8 @@ function ProductDetail({ product }) {
   const { add } = useCart()
   const selected = variants.some(v => v.id === selectedId) ? selectedId : (variants[0]?.id || '')
   const variant = variants.find(v => v.id === selected), amount = Number(quantity)
+  const displayedPrice = variant || (!product.variants.length && hasFixedProductPrice(product) ? product : null)
+  const priceToAgree = !displayedPrice || isAgreedPrice(displayedPrice)
   const valid = variant && variant.availability !== 'no_disponible' && Number.isSafeInteger(amount) && amount > 0
   const images = product.images || []
   const imageIndex = Math.min(photo, Math.max(0, images.length - 1))
@@ -56,7 +58,7 @@ function ProductDetail({ product }) {
       </section>
       <div className="detail-info" data-detail-reveal>
         <header className="detail-heading"><div className="detail-meta"><p>{product.category}</p><span>{variant?.availability === 'no_disponible' ? 'No disponible' : 'Por pedido'}</span></div><h1>{product.name}</h1></header>
-        <div className="detail-price-block" aria-live="polite"><p className="detail-label">{!variant || isAgreedPrice(variant) ? 'Precio a consultar' : 'Precio por unidad'}</p><p className={`detail-price${!variant || isAgreedPrice(variant) ? ' detail-price-quote' : ''}`}>{variant ? variantPriceLabel(variant) : AGREED_PRICE_LABEL}</p><p className="detail-price-hint">{variant ? productionLabel(variant) : 'Tamaños, materiales y plazo a coordinar.'}</p></div>
+        <div className="detail-price-block" aria-live="polite"><p className="detail-label">{priceToAgree ? 'Precio a consultar' : 'Precio por unidad'}</p><p className={`detail-price${priceToAgree ? ' detail-price-quote' : ''}`}>{displayedPrice ? variantPriceLabel(displayedPrice) : AGREED_PRICE_LABEL}</p><p className="detail-price-hint">{variant ? productionLabel(variant) : 'Tamaños, materiales y plazo a coordinar.'}</p></div>
         {variant ? <div className="detail-order">
           <label className="detail-label" htmlFor="variant">Material, color y tamaño</label>
           <select id="variant" value={selected} onChange={e => { setSelected(e.target.value); setQuantity('1'); setNotice('') }}>{variants.map(v => <option key={v.id} value={v.id} disabled={v.availability === 'no_disponible'}>{v.name}{v.availability === 'no_disponible' ? ' · No disponible' : ''}</option>)}</select>

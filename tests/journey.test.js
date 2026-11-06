@@ -87,6 +87,17 @@ test('galería cambia de foto, muestra cuidados opcionales y conserva cantidades
  }finally{await view.close()}
 })
 
+test('producto sin variantes muestra el precio fijo guardado y consulta directa por WhatsApp',async()=>{
+ const row=product(9);row.variantes_producto=[];row.tipo_precio='fijo';row.precio='12500.50';row.moneda='ARS'
+ const view=await mountApp('/productos/diseno-9',[],backend([row]))
+ try{
+  assert.ok(text(view).includes('12.500,50'))
+  assert.ok(!text(view).includes('Acordar con el vendedor'))
+  assert.ok(text(view).includes('Consultar este producto'))
+  assert.ok(!button(view,'Agregar al carrito'))
+ }finally{await view.close()}
+})
+
 test('producto publicado sin variantes ni cuidados muestra consulta y omite cuidados',async()=>{
  const row=product(7);row.variantes_producto=[];row.instrucciones_cuidado=null
  const view=await mountApp('/productos/diseno-7',[],backend([row]))

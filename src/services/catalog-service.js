@@ -1,6 +1,6 @@
 export const PAGE_SIZE = 12
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const selection = `id,nombre,slug,descripcion,instrucciones_cuidado,destacado,publicado,es_ejemplo,creado_en,
+const selection = `id,nombre,slug,descripcion,instrucciones_cuidado,destacado,publicado,es_ejemplo,creado_en,tipo_precio,precio,moneda,
   categorias!inner(id,nombre,slug,activa),
   variantes_producto(id,sku,nombre,ancho_mm,alto_mm,profundidad_mm,precio,moneda,tipo_precio,disponibilidad,plazo_produccion_dias,activa,
     materiales!inner(nombre,activo),colores!inner(nombre,codigo_hex,activo)),
@@ -12,6 +12,7 @@ export function mapProduct(row, urls = new Map()) {
     care: row.instrucciones_cuidado, category: row.categorias.nombre,
     categorySlug: row.categorias.slug, featured: row.destacado,
     published: row.publicado, demo: row.es_ejemplo,
+    priceMode: row.tipo_precio || 'a_acordar', price: row.precio == null ? null : Number(row.precio), currency: row.moneda || null,
     variants: (row.variantes_producto || []).filter(v => v.activa && v.materiales?.activo && v.colores?.activo).map(v => ({
       id: v.id, sku: v.sku, name: v.nombre, material: v.materiales.nombre, color: v.colores.nombre,
       active: v.activa, priceMode: v.tipo_precio, price: v.precio === null ? null : Number(v.precio),

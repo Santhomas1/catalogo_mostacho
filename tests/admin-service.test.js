@@ -1,11 +1,23 @@
 ﻿import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createClient } from '@supabase/supabase-js'
-import { createAdminService, variantPayload, slugify } from '../src/admin/admin-service.js'
+import { createAdminService, variantPayload, productPricePayload, slugify } from '../src/admin/admin-service.js'
 import { verifyAdminSession, authMessage } from '../src/admin/auth-service.js'
 const pid='00000000-0000-4000-8000-000000000001'
 function clientWith(fetcher) { return createClient('https://example.invalid','sb_publishable_test',{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:fetcher}}) }
 const json=data=>new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}})
+
+test('precio del producto valida importe y moneda, y se persiste sin requerir variantes',async()=>{
+ assert.deepEqual(productPricePayload({tipo_precio:'fijo',precio:'12500.50',moneda:' ars '}),{tipo_precio:'fijo',precio:12500.5,moneda:'ARS'})
+ assert.equal(productPricePayload({tipo_precio:'fijo',precio:'0',moneda:'ARS'}).precio,0)
+ assert.deepEqual(productPricePayload({tipo_precio:'a_acordar',precio:'12500',moneda:'ARS'}),{tipo_precio:'a_acordar',precio:null,moneda:null})
+ for(const precio of ['',null,undefined,'-1','NaN','Infinity'])assert.throws(()=>productPricePayload({tipo_precio:'fijo',precio,moneda:'ARS'}))
+ assert.throws(()=>productPricePayload({tipo_precio:'fijo',precio:'100',moneda:'$'}))
+ let payload
+ const service=createAdminService(clientWith(async(_,options)=>{payload=JSON.parse(options.body);return json({id:pid,...payload})}))
+ await service.save('productos',{tipo_precio:'fijo',precio:12500.5,moneda:'ARS'},{id:pid})
+ assert.deepEqual(payload,{tipo_precio:'fijo',precio:12500.5,moneda:'ARS'})
+})
 
 test('permiso administrativo se verifica en servidor, nunca desde metadata del usuario',async()=>{
  let calls=0

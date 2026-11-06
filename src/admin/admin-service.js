@@ -2,7 +2,7 @@ const tables = new Set(['categorias', 'materiales', 'colores', 'productos', 'var
 const fields = {
   categorias: ['nombre', 'slug', 'descripcion', 'orden', 'activa'],
   materiales: ['nombre', 'descripcion', 'activo'], colores: ['nombre', 'codigo_hex', 'activo'],
-  productos: ['categoria_id', 'nombre', 'slug', 'descripcion', 'instrucciones_cuidado', 'destacado', 'publicado'],
+  productos: ['categoria_id', 'nombre', 'slug', 'descripcion', 'instrucciones_cuidado', 'destacado', 'publicado', 'tipo_precio', 'precio', 'moneda'],
   variantes_producto: ['producto_id', 'material_id', 'color_id', 'sku', 'nombre', 'ancho_mm', 'alto_mm', 'profundidad_mm', 'peso_g', 'tipo_precio', 'precio', 'moneda', 'disponibilidad', 'plazo_produccion_dias', 'activa'],
   imagenes_producto: ['texto_alternativo'],
 }
@@ -16,6 +16,13 @@ export function adminError(error) {
   if (error?.code === 'PGRST116') return 'El registro cambió o ya no tenés permiso. Recargá los datos antes de volver a guardar.'
   if (error?.code === '42501' || error?.status === 401 || error?.status === 403) return 'La sesión no tiene permiso para esta operación. Volvé a iniciar sesión o comprobá tu acceso.'
   return error instanceof Error ? error.message : 'No se pudo completar la operación. Revisá los datos y la conexión e intentá nuevamente.'
+}
+export function productPricePayload(form) {
+  if (form.tipo_precio === 'a_acordar') return { tipo_precio: 'a_acordar', precio: null, moneda: null }
+  const precio = form.precio === '' || form.precio == null ? null : Number(form.precio)
+  const moneda = form.moneda?.trim().toUpperCase()
+  if (form.tipo_precio !== 'fijo' || precio === null || !Number.isFinite(precio) || precio < 0 || !/^[A-Z]{3}$/.test(moneda || '')) throw new Error('El precio fijo requiere importe no negativo y moneda de tres letras.')
+  return { tipo_precio: 'fijo', precio, moneda }
 }
 export function variantPayload(form) {
   const optional = value => value === '' || value === null || value === undefined ? null : Number(value)

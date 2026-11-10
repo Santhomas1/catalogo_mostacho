@@ -8,7 +8,7 @@
     "dev:mobile": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test --test-timeout=20000 tests/cart.test.js tests/catalog-service.test.js tests/images.test.js tests/ui-render.test.js tests/cart-react.test.js tests/admin-service.test.js tests/admin-react.test.js tests/admin-editors.test.js tests/metadata.test.js tests/journey.test.js tests/pwa.test.js tests/install-app.test.js"
+    "test": "node --test --test-timeout=20000 tests/cart.test.js tests/catalog-service.test.js tests/images.test.js tests/ui-render.test.js tests/cart-react.test.js tests/admin-service.test.js tests/admin-react.test.js tests/admin-editors.test.js tests/metadata.test.js tests/journey.test.js tests/pwa.test.js tests/install-app.test.js tests/mobile-menu.test.js tests/reveals.test.js"
   },
   "dependencies": {
     "@jsquash/webp": "1.5.0",

@@ -32,6 +32,22 @@ async function clickLink(view,path){
  await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10))})
 }
 
+test('inicio conserva destacados sin categorías y un acceso principal al catálogo', async () => {
+ const requests = []
+ const api = backend([product(1)])
+ const view = await mountApp('/', [], async (input, options) => { requests.push(new URL(input)); return api(input, options) })
+ try {
+  const headings = view.renderer.root.findAllByType('h2')
+  assert.ok(headings.some(node => node.children.includes('Destacados')))
+  assert.ok(!text(view).includes('Categorías y destacados'))
+  assert.ok(!text(view).includes('Hablemos de tu idea'))
+  assert.ok(!text(view).includes('El catálogo está tomando forma.'))
+  assert.ok(text(view).includes('Encontrá tu próxima idea favorita.'))
+  assert.ok(view.renderer.root.findAllByType('h3').some(node => node.findAllByType('a').some(link => link.children.includes('Diseño Ñ 1'))))
+  assert.ok(!requests.some(url => url.pathname.endsWith('/categorias')))
+ } finally { await view.close() }
+})
+
 test('recorrido de dos productos: catálogo, detalle, cantidades, seguir eligiendo y consulta única',async()=>{
  const view=await mountApp('/catalogo',[],backend([product(1),product(2,true)]))
  try{
@@ -87,14 +103,24 @@ test('galería cambia de foto, muestra cuidados opcionales y conserva cantidades
  }finally{await view.close()}
 })
 
-test('producto sin variantes muestra el precio fijo guardado y consulta directa por WhatsApp',async()=>{
+test('producto sin variantes conserva consulta directa y permite preparar carrito con precio fijo',async()=>{
  const row=product(9);row.variantes_producto=[];row.tipo_precio='fijo';row.precio='12500.50';row.moneda='ARS'
  const view=await mountApp('/productos/diseno-9',[],backend([row]))
  try{
   assert.ok(text(view).includes('12.500,50'))
   assert.ok(!text(view).includes('Acordar con el vendedor'))
   assert.ok(text(view).includes('Consultar este producto'))
-  assert.ok(!button(view,'Agregar al carrito'))
+  assert.ok(button(view,'Agregar al carrito'))
+  await act(async()=>button(view,'Agregar al carrito').props.onClick())
+  assert.deepEqual(view.context().items,[{productId:row.id,quantity:1}])
+  await clickLink(view,'/carrito')
+  await act(async()=>{await button(view,'Actualizar y preparar consulta').props.onClick()})
+  const send=view.renderer.root.findAllByType('a').find(a=>String(a.props.href).includes('wa.me/5493816795568?text='))
+  assert.ok(send)
+  const message=new URL(send.props.href).searchParams.get('text')
+  assert.ok(message.includes(row.nombre))
+  assert.ok(message.includes('12.500,50'))
+  assert.ok(!message.includes('SKU:'))
  }finally{await view.close()}
 })
 
@@ -112,7 +138,16 @@ test('producto publicado sin variantes ni cuidados muestra consulta y omite cuid
   assert.equal(destination.searchParams.get('text'),`estoy interesado en este producto ("${row.nombre}")`)
   assert.equal(inquiry.props.target,'_blank')
   assert.ok(!text(view).includes('Cuidados'))
-  assert.ok(!button(view,'Agregar al carrito'))
+  assert.ok(button(view,'Agregar al carrito'))
+  await act(async()=>button(view,'Agregar al carrito').props.onClick())
+  assert.deepEqual(view.context().items,[{productId:row.id,quantity:1}])
+  await clickLink(view,'/carrito')
+  await act(async()=>{await button(view,'Actualizar y preparar consulta').props.onClick()})
+  const send=view.renderer.root.findAllByType('a').find(a=>String(a.props.href).includes('wa.me/5493816795568?text='))
+  assert.ok(send)
+  const message=new URL(send.props.href).searchParams.get('text')
+  assert.ok(message.includes('Total: Acordar con el vendedor'))
+  assert.ok(!message.includes('$'))
  }finally{await view.close()}
 })
 

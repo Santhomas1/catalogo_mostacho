@@ -43,3 +43,19 @@ test('pares de texto cumplen 4.5:1 y límites de controles visibles cumplen 3:1'
  assert.ok(contrast(controlBorder,color('background'))>=3, 'El borde actual del campo no alcanza 3:1')
  assert.ok(contrast(color('ring'),color('background'))>=3)
 })
+
+test('tema editorial mantiene contraste en texto, botones y límites de formularios', () => {
+ const css = readFileSync(new URL('../src/styles/premium.css', import.meta.url), 'utf8')
+ const color = name => {
+  const matches = [...css.matchAll(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`, 'g'))]
+  assert.ok(matches.length, `Falta token ${name}`)
+  return matches.at(-1)[1]
+ }
+ for (const bg of ['background', 'surface-control', 'surface-subtle']) {
+  assert.ok(contrast(color('foreground'), color(bg)) >= 4.5, `Texto principal sobre ${bg}`)
+  assert.ok(contrast(color('text-muted'), color(bg)) >= 4.5, `Texto secundario sobre ${bg}`)
+  assert.ok(contrast(color('control-border'), color(bg)) >= 3, `Controles sobre ${bg}`)
+ }
+ assert.ok(contrast(color('primary'), color('primary-foreground')) >= 4.5)
+ assert.ok(contrast(color('ring'), color('background')) >= 3)
+})

@@ -11,7 +11,8 @@ export function ProductVisual() {
   return <div className="product-visual"><img className="product-placeholder" src="/images/producto-sin-imagen.svg" alt="Imagen no disponible" width="640" height="640" /></div>
 }
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, headingLevel = 2 }) {
+  const Heading = headingLevel === 3 ? 'h3' : 'h2'
   const [imageFailed, setImageFailed] = useState(false)
   const cover = product.images?.[0]
   useEffect(() => { setImageFailed(false) }, [cover?.url])
@@ -25,7 +26,7 @@ export default function ProductCard({ product }) {
   const availability = !product.variants.length ? 'Consultar disponibilidad' : !variants.length ? 'No disponible' : 'Por pedido'
   const href = `/productos/${product.slug}`
   return <Card className="product-card" role="article" aria-label={product.name}>
-    <div className="product-media">
+    <div className="product-card-core"><div className="product-media">
       <Link className="product-image-link" to={href} aria-label={`Ver ${product.name}`} tabIndex={-1}>
         {cover && !imageFailed ? <img className="product-photo" src={cover.url} alt={cover.alt} loading="lazy" decoding="async" width="640" height="640" onError={() => setImageFailed(true)} /> : <ProductVisual />}
       </Link>
@@ -36,7 +37,7 @@ export default function ProductCard({ product }) {
         <p className="product-category">{product.category}</p>
         <span className={`product-status${variants.length ? '' : ' product-status-muted'}`}>{availability}</span>
       </div>
-      <h2 className="product-name"><Link to={href} title={product.name}>{product.name}</Link></h2>
+      <Heading className="product-name"><Link to={href} title={product.name}>{product.name}</Link></Heading>
       <div className="product-card-bottom">
         <div className="product-pricing">
           <p className="product-price-caption">{canPrice ? 'Precio' : 'Precio a consultar'}</p>
@@ -45,6 +46,6 @@ export default function ProductCard({ product }) {
         </div>
         <Button asChild className="product-button"><Link to={href} aria-label={`Ver producto: ${product.name}`}>Ver producto <ArrowRight aria-hidden="true" /></Link></Button>
       </div>
-    </CardContent>
+    </CardContent></div>
   </Card>
 }

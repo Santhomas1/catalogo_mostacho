@@ -1,5 +1,5 @@
 ﻿import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { CART_KEY, readCart, changeQuantity } from '@/lib/cart'
+import { CART_KEY, readCart, changeQuantity, cartItemId } from '@/lib/cart'
 import { catalogService } from '@/services/catalog'
 import { refreshCartSnapshot } from '@/lib/cart-sync'
 const CartContext = createContext(null)
@@ -9,7 +9,7 @@ export function CartProvider({ children }) {
   const [warning, setWarning] = useState(initial.warning)
   const [products, setProducts] = useState([])
   const [cached, setCached] = useState([])
-  const [sync, setSync] = useState({ status: initial.items.length ? 'checking' : 'ready', message: '', checkedAt: 0 })
+  const [sync, setSync] = useState({ status: initial.items.length ? 'checking' : 'ready', message: '', checkedAt: 0, revision: 0 })
   const itemsRef = useRef(items), productsRef = useRef([]), requestRef = useRef(0)
   itemsRef.current = items
   const refresh = useCallback(async () => {
@@ -18,7 +18,7 @@ export function CartProvider({ children }) {
     const signature = JSON.stringify(requested)
     if (!requested.length) {
       setProducts([]); productsRef.current = []
-      setSync({ status: 'ready', message: '', checkedAt: Date.now() })
+      setSync({ status: 'ready', message: '', checkedAt: Date.now(), revision: ticket })
       return { items: [], products: [], lines: [], signature }
     }
     setSync(s => ({ ...s, status: 'checking', message: 'Actualizando precios y opciones…' }))
@@ -29,11 +29,11 @@ export function CartProvider({ children }) {
       setProducts(snapshot.products)
       setCached(old => [...new Map([...old, ...snapshot.products].map(p => [p.id, p])).values()])
       const checkedAt = Date.now()
-      setSync({ status: 'ready', checkedAt, message: snapshot.changed ? 'Cambiaron precios o condiciones de tu selección. Revisá la información actualizada; conservamos tus cantidades.' : 'Precios y opciones consultados en Supabase. Revisalos antes de enviar.' })
-      return { ...snapshot, signature, checkedAt }
+      setSync({ status: 'ready', checkedAt, revision: ticket, message: snapshot.changed ? 'Cambiaron precios o condiciones de tu selección. Revisá la información actualizada; conservamos tus cantidades.' : 'Precios y opciones actualizados. Revisalos antes de enviar.' })
+      return { ...snapshot, signature, checkedAt, revision: ticket }
     } catch {
       if (ticket === requestRef.current && signature === JSON.stringify(itemsRef.current)) {
-        setSync({ status: 'error', checkedAt: 0, message: 'No pudimos actualizar el carrito. Conservamos tu selección. Reintentá antes de preparar la consulta.' })
+        setSync({ status: 'error', checkedAt: 0, revision: ticket, message: 'No pudimos actualizar el carrito. Conservamos tu selección. Reintentá antes de preparar la consulta.' })
       }
       return null
     }
@@ -57,8 +57,9 @@ export function CartProvider({ children }) {
   }
   return <CartContext.Provider value={{ items, products, cached, sync, refresh, warning,
     count: items.reduce((sum, item) => sum + item.quantity, 0), add,
+    addProduct: (product, amount = 1) => add(`product:${product.id}`, amount, product),
     update: (id, amount) => setItems(current => changeQuantity(current, id, amount)),
-    remove: id => setItems(current => current.filter(i => i.variantId !== id)), clear: () => setItems([]),
+    remove: id => setItems(current => current.filter(i => cartItemId(i) !== id)), clear: () => setItems([]),
   }}>{children}</CartContext.Provider>
 }
 export const useCart = () => useContext(CartContext)

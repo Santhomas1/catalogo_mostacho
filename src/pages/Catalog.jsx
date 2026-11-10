@@ -27,8 +27,8 @@ export default function Catalog() {
   }
   return <section className="container catalog-page"><p className="eyebrow">CATÁLOGO MOSTACHO</p><h1>Ideas para llevar a casa.</h1>
     <div className="catalog-filters" role="group" aria-label="Buscar y filtrar productos">
-      <label className="catalog-search"><span className="sr-only">Buscar por nombre</span><Search size={18} aria-hidden="true" /><input type="search" value={query} maxLength={120} onChange={e => filter('q', e.target.value)} placeholder="Buscar productos…" /></label>
-      <label className="catalog-category"><span className="sr-only">Categoría</span><select value={category} onChange={e => filter('categoria', e.target.value)}><option value="">Todas las categorías</option>{category && !data?.categories.some(c => c.slug === category) && <option value={category}>{category}</option>}{data?.categories.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></label>
+      <label className="catalog-search"><span className="catalog-filter-label">Buscar por nombre</span><span className="catalog-search-control"><Search size={18} aria-hidden="true" /><input type="search" value={query} maxLength={120} onChange={e => filter('q', e.target.value)} placeholder="Buscar productos…" /></span></label>
+      <label className="catalog-category"><span className="catalog-filter-label">Categoría</span><span className="catalog-category-control"><select value={category} onChange={e => filter('categoria', e.target.value)}><option value="">Todas las categorías</option>{category && !data?.categories.some(c => c.slug === category) && <option value={category}>{category}</option>}{data?.categories.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></span></label>
       <p className="catalog-result-count" role="status" aria-atomic="true">{data && <><span>{data.count}</span> {data.count === 1 ? 'producto' : 'productos'}</>}</p>
     </div>
     <RemoteState loading={loading} error={error} retry={retry} />

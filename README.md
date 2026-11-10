@@ -55,7 +55,8 @@ Para una comprobación manual: recorrer inicio/catálogo/contacto; al cargar pro
 - `src/services/images.js`: optimización a WebP, carga, firma y limpieza para la futura administración.
 - `src/components/CartProvider.jsx`: selección persistente y validación remota.
 - `src/components/ui/` y `components.json`: componentes shadcn/ui en JavaScript.
-- `src/styles/globals.css`: estilos celestes y blancos, adaptados a móvil.
+- `src/styles/globals.css`: estilos base y estructura responsive.
+- `src/styles/premium.css`: tema visual compartido, controles accesibles y ajustes de móvil/tablet.
 - `public/logo/`: logo y favicon proporcionados por el usuario.
 - `public/images/producto-sin-imagen.svg`: respaldo de productos sin foto o con error de carga.
 - `supabase/migrations/`: historial local alineado con el remoto. No volver a aplicar migraciones ya ejecutadas al mismo proyecto.
@@ -80,10 +81,14 @@ La preparación y los pasos de primera subida están en [PREPARACION_GITHUB.md](
 Configuración, instalación en Android/iPhone y comprobaciones en [PWA_MOSTACHO.md](PWA_MOSTACHO.md). Incluye manifest, iconos, registro en producción, invitación de instalación compatible y pantalla sin conexión. El catálogo y la administración siguen necesitando Internet; no se cachean datos de Supabase. Vercel sirve las rutas de React mediante `vercel.json`. No requiere variables de entorno adicionales ni ejecutar migraciones.
 ## Publicación con campos opcionales
 
-Para publicar se requiere una imagen, además de los datos básicos del producto. Las variantes son opcionales y las instrucciones de cuidado pueden dejarse vacías. Sin variantes, la ficha ofrece consultar el producto y no permite agregarlo al carrito; los cuidados vacíos no se muestran.
+Para publicar se requiere una imagen, además de los datos básicos del producto. Las variantes son opcionales y las instrucciones de cuidado pueden dejarse vacías. Sin variantes, la ficha permite consultar el producto directamente o agregarlo al carrito usando su precio fijo o a acordar. Los cuidados vacíos no se muestran.
 
 La migración `20261105153339_variantes_opcionales_publicacion.sql` actualiza la validación de la base de datos y conserva el requisito de imagen. Ya está aplicada en `mostacho-3d-desarrollo`. Verificación: 71 pruebas JavaScript, compilación y pruebas SQL de publicación/permisos y administración con transacciones revertidas.
 
 El precio de productos sin variantes se edita en **Datos y publicación → Modalidad de precio del producto**. Permite precio fijo (ARS por defecto) o acordar con el vendedor. Las variantes conservan sus propios precios y tienen prioridad al mostrarse. La consulta por WhatsApp sigue disponible para productos sin variantes, incluso con precio fijo.
 
 La migración `20261106122836_precio_producto_sin_variantes.sql` agrega los campos y valida el importe y la moneda. Aplicada en `mostacho-3d-desarrollo`; verificada con `supabase/tests/precio_producto.sql` (ROLLBACK), 75 pruebas JavaScript y la comprobación del catálogo público.
+
+## Revisión integral actual
+
+Consultar [REVISION_INTEGRAL.md](REVISION_INTEGRAL.md) para el alcance, las correcciones y la evidencia reciente. El carrito identifica cada revalidación con una revisión única: una actualización de precios invalida cualquier mensaje preparado anteriormente, aunque ambas consultas terminen en el mismo milisegundo.

@@ -394,3 +394,6 @@ main, fieldset, .product-detail > *, .cart-layout > *, .cart-line > *,
 :is(.admin-field, .catalog-filters, .product-detail) select { font-weight: 650; }
 .admin-field:has(> select) > span, .detail-order > .detail-label, .detail-details summary { font-weight: 650; }
 select option { font-weight: 400; }
+.detail-inquiry-actions { display: grid; gap: 12px; }
+.product-page .detail-add-product { width: 100%; min-height: 48px; border: 1px solid #eaeaea; border-radius: 6px; background: white; color: #111; }
+.product-page .detail-add-product:hover { background: #f7f6f3; }

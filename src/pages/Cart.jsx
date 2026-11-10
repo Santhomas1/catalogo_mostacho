@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCart } from '@/components/CartProvider'
-import { resolveCart } from '@/lib/cart'
+import { resolveCart, cartItemId } from '@/lib/cart'
 import { prepareCartSummary } from '@/lib/cart-sync'
 import { formatPrice, variantPriceLabel, productionLabel, isAgreedPrice, AGREED_PRICE_LABEL, pricingSummary } from '@/lib/pricing'
 import { Button } from '@/components/ui/button'
@@ -19,27 +19,28 @@ export default function Cart() {
     const timer = setTimeout(() => { setPrepared(null); setCopied('La consulta venció. Actualizala antes de enviarla.') }, 30000)
     return () => clearTimeout(timer)
   }, [prepared])
-  const fresh = prepared?.signature === signature && prepared?.checkedAt === sync.checkedAt && sync.status === 'ready'
+  const fresh = prepared?.signature === signature && prepared?.revision === sync.revision && sync.status === 'ready'
   const summary = fresh ? prepared.text : ''
   const link = `${business.whatsapp}?text=${encodeURIComponent(summary)}`, long = link.length > 6000
   const lines = resolveCart(items, products)
   const pricing = pricingSummary(lines)
-  // checkedAt lo fija la misma consulta de refresh; se conserva su identificador, no otro reloj.
+  // Cada validación tiene una revisión única, aunque el reloj marque el mismo milisegundo.
   async function prepareLatest() {
     setPrepared(null); setCopied('')
     const snapshot = await refresh()
     if (!snapshot) return
     const text = prepareCartSummary(snapshot, window.location.origin)
-    if (text) setPrepared({ text, signature: snapshot.signature, checkedAt: snapshot.checkedAt })
+    if (text) setPrepared({ text, signature: snapshot.signature, revision: snapshot.revision })
   }
   if (!items.length) return <><p className="container" role="status">{warning}</p><EmptyPage eyebrow="TU SELECCIÓN" title="Tu carrito está vacío." description="Elegí un producto, su variante y cantidad para preparar tu consulta." action="Comenzar a elegir" to="/catalogo" /></>
   return <section className="container catalog-page"><p className="eyebrow">TU SELECCIÓN</p><h1>Tu próxima idea, en lista.</h1>
     {warning && <p className="demo-notice" role="status">{warning}</p>}
     <div className="cart-sync" role={sync.status === 'error' ? 'alert' : 'status'}><p>{sync.message}</p>{sync.status === 'error' && <Button variant="outline" onClick={refresh}>Reintentar actualización</Button>}</div>
     <div className="cart-layout"><div>{lines.map(line => {
-      const remembered = cached.find(p => p.variants.some(v => v.id === line.variantId))
+      const itemId = cartItemId(line)
+      const remembered = cached.find(p => line.productId ? p.id === line.productId : p.variants.some(v => v.id === line.variantId))
       const title = line.product?.name || remembered?.name || 'Selección guardada'
-      return <article className="cart-line" key={line.variantId}><div><h2>{line.product ? <Link to={`/productos/${line.product.slug}`}>{title}</Link> : title}</h2><p>{line.variant?.name || line.variantId}</p>{line.variant && <><p>SKU: {line.variant.sku}</p><p>{variantPriceLabel(line.variant)}</p><p>{productionLabel(line.variant)}</p></>}</div><div><label htmlFor={`qty-${line.variantId}`}>Cantidad</label><input id={`qty-${line.variantId}`} type="number" min="1" step="1" value={line.quantity} onChange={e => update(line.variantId, Number(e.target.value))} /><p>{sync.status === 'ready' && line.variant && !line.error ? (isAgreedPrice(line.variant) ? AGREED_PRICE_LABEL : formatPrice(line.subtotal, line.variant.currency)) : 'Pendiente de validar'}</p><Button variant="ghost" onClick={() => remove(line.variantId)}>Quitar</Button></div>{line.error && sync.status === 'ready' && <p className="cart-error" role="alert">{line.error}</p>}</article>
+      return <article className="cart-line" key={itemId}><div><h2>{line.product ? <Link to={`/productos/${line.product.slug}`}>{title}</Link> : title}</h2>{!line.productId && <p>{line.variant?.name || itemId}</p>}{line.variant && <>{!line.productId && <p>SKU: {line.variant.sku}</p>}<p>{variantPriceLabel(line.variant)}</p><p>{productionLabel(line.variant)}</p></>}</div><div><label htmlFor={`qty-${itemId}`}>Cantidad</label><input id={`qty-${itemId}`} aria-label={`Cantidad de ${title}`} type="number" min="1" step="1" value={line.quantity} onChange={e => update(itemId, Number(e.target.value))} /><p>{sync.status === 'ready' && line.variant && !line.error ? (isAgreedPrice(line.variant) ? AGREED_PRICE_LABEL : formatPrice(line.subtotal, line.variant.currency)) : 'Pendiente de validar'}</p><Button variant="ghost" aria-label={`Quitar ${title} del carrito`} onClick={() => remove(itemId)}>Quitar</Button></div>{line.error && sync.status === 'ready' && <p className="cart-error" role="alert">{line.error}</p>}</article>
     })}<div className="hero-actions cart-actions"><Button asChild variant="outline"><Link to="/catalogo">Seguir eligiendo</Link></Button><Button variant="ghost" onClick={() => setConfirmClear(true)}>Vaciar carrito</Button></div>{confirmClear && <div className="demo-notice" role="group" aria-label="Confirmar vaciado"><p>¿Quitar todos los productos del carrito?</p><div className="hero-actions"><Button onClick={() => { clear(); setConfirmClear(false) }}>Sí, vaciar</Button><Button variant="outline" autoFocus onClick={() => setConfirmClear(false)}>Cancelar</Button></div></div>}</div>
     <aside className="cart-summary"><h2>Resumen de consulta</h2><p>{sync.status === 'ready' && lines.every(l => !l.error) ? pricing.label : 'Actualizá o revisá tu selección para conocer los importes vigentes.'}</p><p>Todos los productos se realizan por pedido. Los importes a acordar no se incluyen en el subtotal conocido. Precio final, tamaños y plazos se confirman con Mostacho.</p>
       <Button className="product-button" disabled={sync.status === 'checking'} onClick={prepareLatest}>{sync.status === 'checking' ? 'Actualizando…' : 'Actualizar y preparar consulta'}</Button>

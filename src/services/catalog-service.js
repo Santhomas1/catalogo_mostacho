@@ -12,6 +12,7 @@ export function mapProduct(row, urls = new Map()) {
     care: row.instrucciones_cuidado, category: row.categorias.nombre,
     categorySlug: row.categorias.slug, featured: row.destacado,
     published: row.publicado, demo: row.es_ejemplo,
+    hasVariants: Boolean(row.variantes_producto?.length),
     priceMode: row.tipo_precio || 'a_acordar', price: row.precio == null ? null : Number(row.precio), currency: row.moneda || null,
     variants: (row.variantes_producto || []).filter(v => v.activa && v.materiales?.activo && v.colores?.activo).map(v => ({
       id: v.id, sku: v.sku, name: v.nombre, material: v.materiales.nombre, color: v.colores.nombre,
@@ -77,6 +78,16 @@ export function createCatalogService(client) {
       if (!data) return { product: null, imageWarning: false }
       const result = await hydrate([data])
       return { product: result.products[0], imageWarning: result.imageWarning }
+    },
+    async byProductIds(ids) {
+      const valid = [...new Set(ids.filter(id => UUID.test(id)))]
+      const products = []
+      for (let start = 0; start < valid.length; start += 50) {
+        const result = await publicProducts().in('id', valid.slice(start, start + 50)).limit(50)
+        if (result.error) throw result.error
+        products.push(...(await hydrate(result.data, false)).products)
+      }
+      return products
     },
     async byVariantIds(ids) {
       const valid = [...new Set(ids.filter(id => UUID.test(id)))]

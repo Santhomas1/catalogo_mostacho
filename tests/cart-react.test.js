@@ -51,4 +51,23 @@ test('fallo y reintento conservan la selección; producto retirado bloquea cotiz
  } finally { await view.close() }
 })
 
+test('dos validaciones en el mismo milisegundo no reutilizan una consulta anterior', async () => {
+ const originalNow = Date.now
+ Date.now = () => 1800000000000
+ const api = backend()
+ let view
+ try {
+  view = await mountCart([{ variantId: vid, quantity: 1 }], api.fetch)
+  const prepare = view.renderer.root.findAllByType('button').find(b => b.children.includes('Actualizar y preparar consulta'))
+  await act(async () => { await prepare.props.onClick() })
+  assert.equal(sendLinks(view).length, 1)
+  api.price('7000.00')
+  await act(async () => { await view.context().refresh() })
+  assert.equal(sendLinks(view).length, 0, 'Cambiar la versión de precios debe invalidar el mensaje preparado')
+ } finally {
+  if (view) await view.close()
+  Date.now = originalNow
+ }
+})
+
 after(closeClient)

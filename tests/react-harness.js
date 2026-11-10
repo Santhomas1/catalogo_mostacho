@@ -26,7 +26,11 @@ function setup(items, options = {}) {
  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
  globalThis.window = { location: { origin: 'https://example.com' }, localStorage: { getItem: key => { if (options.readError) throw Error('blocked'); return memory.get(key) || null; }, setItem: (key, value) => { if (options.writeError) throw Error('quota'); memory.set(key, value); }, removeItem: key => memory.delete(key) }, addEventListener() {}, removeEventListener() {}, scrollTo() {} };
  const tags = [];
- globalThis.document = { visibilityState: 'visible', title: '', head: { appendChild(tag) { tags.push(tag); } }, createElement() { return { attributes: {}, setAttribute(key, value) { this.attributes[key] = value; } }; }, querySelector(selector) { const match = selector.match(/^meta\[(name|property)="(.+)"\]$/); return match ? tags.find(tag => tag.attributes[match[1]] === match[2]) || null : null; } };
+ globalThis.document = { visibilityState: 'visible', title: '', head: { appendChild(tag) { tags.push(tag); } }, createElement() { return { attributes: {}, setAttribute(key, value) { this.attributes[key] = value; } }; }, querySelector(selector) {
+  const attribute = selector.startsWith('link[') ? 'rel' : selector.startsWith('meta[name=') ? 'name' : selector.startsWith('meta[property=') ? 'property' : '';
+  const value = selector.split('"')[1];
+  return attribute ? tags.find(tag => tag.attributes[attribute] === value) || null : null;
+ } };
  return memory;
 }
 export function render(path, items = []) { setup(items); return renderToString(<MemoryRouter initialEntries={[path]}><CartProvider><App /></CartProvider></MemoryRouter>); }
@@ -80,7 +84,7 @@ export async function mountCart(items, fetcher, options = {}) {
  return { renderer, memory, context: () => ctx, close: () => act(async () => renderer.unmount()) };
 }
 `
-const result = await build({ stdin: { contents, resolveDir: process.cwd(), loader: 'jsx' }, jsx: 'automatic', bundle: true, packages: 'external', write: false, platform: 'node', format: 'cjs', define: { 'import.meta.env.DEV': 'false', 'import.meta.env.VITE_SUPABASE_URL': '"https://example.invalid"', 'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': '"sb_publishable_test"' }, alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } })
+const result = await build({ stdin: { contents, resolveDir: process.cwd(), loader: 'jsx' }, jsx: 'automatic', bundle: true, packages: 'external', write: false, platform: 'node', format: 'cjs', define: { 'import.meta.env.DEV': 'false', 'import.meta.env.VITE_SITE_URL': '""', 'import.meta.env.VITE_SUPABASE_URL': '"https://example.invalid"', 'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': '"sb_publishable_test"' }, alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } })
 const compiled = { exports: {} }
 new Function('require', 'module', 'exports', result.outputFiles[0].text)(createRequire(import.meta.url), compiled, compiled.exports)
 export const { render, renderCard, mountCart, mountInstall, mountApp, mountAdmin, mountAuthForm, mountEditor, act, closeClient } = compiled.exports

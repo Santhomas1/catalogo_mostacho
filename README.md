@@ -92,3 +92,5 @@ La migración `20261106122836_precio_producto_sin_variantes.sql` agrega los camp
 ## Revisión integral actual
 
 Consultar [REVISION_INTEGRAL.md](REVISION_INTEGRAL.md) para el alcance, las correcciones y la evidencia reciente. El carrito identifica cada revalidación con una revisión única: una actualización de precios invalida cualquier mensaje preparado anteriormente, aunque ambas consultas terminen en el mismo milisegundo.
+
+La revisión de navegación, filtros, paginación y metadatos está en [REVISION_UX_SEO.md](REVISION_UX_SEO.md). Configurar `VITE_SITE_URL` con el dominio definitivo permite mantener las URLs canónicas y sociales en ese origen. El sitio sigue siendo una SPA; no incorpora SSR ni prerenderizado de fichas.

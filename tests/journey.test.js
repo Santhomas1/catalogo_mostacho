@@ -212,10 +212,66 @@ test('catálogo de 35 productos solicita páginas de 12 y conserva la navegació
  try{
   assert.ok(view.renderer.root.findAllByType('span').some(s=>s.children.join('')==='Página 1 de 3'))
   assert.equal(new Set(view.renderer.root.findAllByType('a').filter(a=>a.props.href?.startsWith('/productos/')).map(a=>a.props.href)).size,12)
-  await act(async()=>{button(view,'Siguiente').props.onClick()})
+  assert.ok(view.renderer.root.findAllByType('a').some(a=>a.props.href==='/catalogo?pagina=2' && a.props.rel==='next'))
+  await clickLink(view,'/catalogo?pagina=2')
   await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10))})
   assert.ok(view.renderer.root.findAllByType('span').some(s=>s.children.join('')==='Página 2 de 3'))
   assert.ok(requests.some(url=>url.pathname.endsWith('/productos') && url.searchParams.get('offset')==='12' && url.searchParams.get('limit')==='12'))
   assert.ok(view.renderer.root.findAllByType('a').some(a=>a.props.href==='/productos/diseno-13'))
  }finally{await view.close()}
+})
+
+test('paginación conserva búsqueda y categoría; limpiar filtros funciona con resultados visibles', async () => {
+ const requests = [], api = backend(Array.from({length:25}, (_, i) => product(i + 1)))
+ const view = await mountApp('/catalogo?q=maceta&categoria=hogar', [], async input => { requests.push(new URL(input)); return api(input) })
+ try {
+  assert.ok(button(view, 'Limpiar filtros'))
+  assert.ok(view.renderer.root.findAllByType('a').some(link => link.props.href === '/catalogo?q=maceta&categoria=hogar&pagina=2'))
+  await clickLink(view, '/catalogo?q=maceta&categoria=hogar&pagina=2')
+  assert.ok(requests.some(url => url.searchParams.get('offset') === '12' && url.searchParams.get('categorias.slug') === 'eq.hogar' && url.searchParams.get('nombre')?.includes('maceta')))
+  assert.equal(document.querySelector('link[rel="canonical"]').attributes.href, 'https://example.com/catalogo?q=maceta&categoria=hogar&pagina=2')
+  await act(async () => button(view, 'Limpiar filtros').props.onClick())
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 15)) })
+  assert.ok(!button(view, 'Limpiar filtros'))
+  assert.equal(document.querySelector('link[rel="canonical"]').attributes.href, 'https://example.com/catalogo')
+  assert.equal(document.querySelector('meta[name="robots"]').attributes.content, 'index,follow')
+  assert.ok(view.renderer.root.findAllByType('a').some(link => link.props.href === '/catalogo?pagina=2'))
+  assert.equal(requests.filter(url => url.pathname.endsWith('/categorias')).length, 1, 'La búsqueda y paginación no deben volver a cargar las categorías')
+ } finally { await view.close() }
+})
+
+test('fallo de categorías no oculta productos y su reintento no vuelve a cargar el catálogo', async () => {
+ let failCategories = true, productRequests = 0
+ const api = backend([product(1)])
+ const view = await mountApp('/catalogo', [], async input => {
+  const url = new URL(input)
+  if (url.pathname.endsWith('/categorias') && failCategories) return new Response(JSON.stringify({ message: 'Fallo de categorías' }), { status: 400 })
+  if (url.pathname.endsWith('/productos')) productRequests++
+  return api(input)
+ })
+ try {
+  assert.ok(text(view).includes('Diseño Ñ 1'))
+  assert.ok(text(view).includes('No pudimos cargar las categorías.'))
+  failCategories = false
+  await act(async () => button(view, 'Reintentar categorías').props.onClick())
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 15)) })
+  assert.ok(!button(view, 'Reintentar categorías'))
+  assert.equal(productRequests, 1)
+  assert.ok(view.renderer.root.findAllByType('option').some(option => option.children.includes('Decoración')))
+ } finally { await view.close() }
+})
+
+test('página fuera de rango normaliza la URL y sus metadatos al volver a la primera', async () => {
+ const api = backend([product(1)])
+ const view = await mountApp('/catalogo?pagina=10', [], async input => {
+  const url = new URL(input)
+  if (url.pathname.endsWith('/productos') && Number(url.searchParams.get('offset')) > 0) return new Response(JSON.stringify({code:'PGRST103',message:'Fuera de rango'}), {status:416})
+  return api(input)
+ })
+ try {
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
+  assert.equal(document.querySelector('link[rel="canonical"]').attributes.href, 'https://example.com/catalogo')
+  assert.equal(document.title, 'Catálogo · Mostacho 3D')
+  assert.ok(text(view).includes('Diseño Ñ 1'))
+ } finally { await view.close() }
 })

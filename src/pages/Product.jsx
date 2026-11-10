@@ -51,7 +51,7 @@ function ProductDetail({ product }) {
     <div className="product-detail">
       <section className="detail-gallery" aria-label="Fotos del producto" data-detail-reveal>
         <div className="detail-image-stage">{images.length && !failed
-          ? <img className="product-photo" src={images[imageIndex].url} alt={images[imageIndex].alt} width="800" height="800" decoding="async" onError={() => setFailed(true)} />
+          ? <img className="product-photo" fetchPriority="high" src={images[imageIndex].url} alt={images[imageIndex].alt} width="800" height="800" decoding="async" onError={() => setFailed(true)} />
           : <ProductVisual />}</div>
         {images.length > 0 && <div className="detail-gallery-nav"><p aria-live="polite" aria-atomic="true">Imagen {imageIndex + 1} de {images.length}</p>{images.length > 1 && <div><button type="button" disabled={imageIndex === 0} aria-label="Imagen anterior" onClick={() => showPhoto(imageIndex - 1)}>Anterior</button><button type="button" disabled={imageIndex === images.length - 1} aria-label="Imagen siguiente" onClick={() => showPhoto(imageIndex + 1)}>Siguiente</button></div>}</div>}
         {images.length > 1 && <div className="gallery-thumbnails" role="group" aria-label="Elegir foto">{images.map((image, i) => <button type="button" key={image.id || image.path || i} aria-label={`Ver imagen ${i + 1}`} aria-pressed={imageIndex === i} onClick={() => showPhoto(i)}><img src={image.url} alt="" loading="lazy" onError={e => { if (!e.currentTarget.src.endsWith('/images/producto-sin-imagen.svg')) e.currentTarget.src = '/images/producto-sin-imagen.svg' }} /></button>)}</div>}

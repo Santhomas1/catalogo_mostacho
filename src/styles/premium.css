@@ -448,3 +448,25 @@ main:focus { outline: none; }
 [data-slot=button][data-variant=ghost]:hover { background: var(--accent); color: var(--foreground); }
 [data-slot=button][data-variant=default] > svg:is(.lucide-arrow-up-right,.lucide-arrow-right) { background: #17323b0d; }
 .detail-meta span { color: var(--ring); background: var(--accent); }
+
+/* Two catalog products per row on phones; featured products keep their layout. */
+@media(max-width:767px) {
+ .catalog-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; }
+ .catalog-product-grid .product-card { padding: 4px; border-radius: 24px; }
+ .catalog-product-grid .product-card-core { border-radius: 20px; }
+ .catalog-product-grid .product-media { border-radius: 20px 20px 12px 12px; }
+ .catalog-product-grid .product-photo { aspect-ratio: 1; padding: 8px; }
+ .catalog-product-grid .product-visual, .catalog-product-grid .product-placeholder { aspect-ratio: 1; }
+ .catalog-product-grid .product-card-content { padding: 14px 10px 10px; gap: 4px; }
+ .catalog-product-grid .product-card-meta { gap: 6px; margin-bottom: 8px; min-height: 56px; }
+ .catalog-product-grid .product-category { font-size: 10px; line-height: 1.5; letter-spacing: .04em; }
+ .catalog-product-grid .product-status { padding: 4px 6px; font-size: 11px; line-height: 1.4; border-radius: 10px; }
+ .catalog-product-grid .product-name { font-size: clamp(15px, 3.8vw, 19px); line-height: 1.4; min-height: 2.8em; margin-bottom: 8px; letter-spacing: -.025em; }
+ .catalog-product-grid .product-pricing { padding-block: 12px; min-height: 96px; }
+ .catalog-product-grid .product-price { font-size: clamp(16px, 4.2vw, 22px); line-height: 1.35; letter-spacing: -.025em; }
+ .catalog-product-grid .product-price-quote { font-size: 14px; line-height: 1.45; }
+ .catalog-product-grid .product-price-caption, .catalog-product-grid .product-price-note { font-size: 11px; line-height: 1.5; }
+ .catalog-product-grid .product-button { min-height: 44px; padding: 10px 8px; justify-content: center; font-size: 12px; gap: 0; }
+ .catalog-product-grid .product-button > svg { display: none; }
+ .catalog-product-grid .demo-badge { inset: 8px auto auto 8px; max-width: calc(100% - 16px); font-size: 10px; padding: 4px 6px; }
+}

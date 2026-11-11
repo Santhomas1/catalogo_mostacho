@@ -99,7 +99,7 @@ export async function mountCart(items, fetcher, options = {}) {
  return { renderer, memory, context: () => ctx, close: () => act(async () => renderer.unmount()) };
 }
 `
-const result = await build({ stdin: { contents, resolveDir: process.cwd(), loader: 'jsx' }, jsx: 'automatic', bundle: true, packages: 'external', write: false, platform: 'node', format: 'cjs', define: { 'import.meta.env.DEV': 'false', 'import.meta.env.VITE_SITE_URL': '""', 'import.meta.env.VITE_SUPABASE_URL': '"https://example.invalid"', 'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': '"sb_publishable_test"' }, alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } })
+const result = await build({ stdin: { contents, resolveDir: process.cwd(), loader: 'jsx' }, jsx: 'automatic', bundle: true, packages: 'external', write: false, platform: 'node', format: 'cjs', define: { 'import.meta.env.DEV': 'false', 'import.meta.env.VITE_PRODUCT_THUMBNAILS': '"true"', 'import.meta.env.VITE_SITE_URL': '""', 'import.meta.env.VITE_SUPABASE_URL': '"https://example.invalid"', 'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': '"sb_publishable_test"' }, alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } })
 const compiled = { exports: {} }
 new Function('require', 'module', 'exports', result.outputFiles[0].text)(createRequire(import.meta.url), compiled, compiled.exports)
 export const { render, renderCard, mountCart, mountInstall, mountPhoto, mountRemote, mountApp, mountAdmin, mountAuthForm, mountEditor, act, closeClient } = compiled.exports

@@ -285,3 +285,79 @@ test('si falla la subida de la miniatura, retira el original nuevo sin guardar u
  assert.equal(client.calls.some(call => call[0] === 'insert' && call[1] === 'imagenes_producto'), false)
  assert.equal(client.calls.find(call => call[0] === 'remove')[1].length, 1)
 })
+
+
+test('ajusta compresion antes de guardar y reduce resolucion solo cuando hace falta', async () => {
+ const previousBitmap = globalThis.createImageBitmap, previousDocument = globalThis.document
+ const attempts = []
+ let closed = 0
+ const canvas = { getContext: () => ({ drawImage() {} }), toBlob: (callback, type, quality) => {
+  attempts.push({ width: canvas.width, height: canvas.height, quality })
+  callback(new Blob([new Uint8Array(canvas.width > 900 ? 400 * 1024 : 100 * 1024)], { type: 'image/webp' }))
+ } }
+ globalThis.createImageBitmap = async () => ({ width: 4000, height: 3000, close() { closed++ } })
+ globalThis.document = { createElement: () => canvas }
+ try {
+  const optimized = await optimizeImage({ type: 'image/jpeg', size: 5 * 1024 * 1024 })
+  assert.ok(optimized.size <= 120 * 1024)
+  assert.equal(attempts[0].width, 1600)
+  assert.ok(attempts.some(attempt => attempt.quality < 0.82))
+  assert.ok(attempts.some(attempt => attempt.width < 1600))
+  assert.ok(attempts.every(attempt => Math.abs(attempt.width / attempt.height - 4 / 3) < 0.01))
+  assert.equal(closed, 1)
+ } finally { globalThis.createImageBitmap = previousBitmap; globalThis.document = previousDocument }
+})
+
+
+test('reduce calidad manteniendo resolucion si alcanza el peso; el fallback recibe la calidad de cada intento', async () => {
+ const previousBitmap = globalThis.createImageBitmap, previousDocument = globalThis.document
+ const qualities = []
+ let closed = 0
+ const canvas = { getContext: () => ({ drawImage() {}, getImageData: () => ({ width: canvas.width, height: canvas.height }) }), toBlob: callback => callback(null) }
+ globalThis.createImageBitmap = async () => ({ width: 1600, height: 1200, close() { closed++ } })
+ globalThis.document = { createElement: () => canvas }
+ try {
+  const converted = await optimizeImage({ type: 'image/jpeg', size: 500 * 1024 }, { webpEncoder: async (pixels, quality) => {
+   qualities.push(quality)
+   return new Blob([new Uint8Array(quality > 0.8 ? 180 * 1024 : 110 * 1024)], { type: 'image/webp' })
+  } })
+  assert.equal(converted.size, 110 * 1024)
+  assert.equal(canvas.width, 1600)
+  assert.deepEqual(qualities, [0.82, 0.74])
+  assert.equal(closed, 1)
+ } finally { globalThis.createImageBitmap = previousBitmap; globalThis.document = previousDocument }
+})
+
+test('si no llega al objetivo guarda la mejor conversion sin agregar restricciones de subida', async () => {
+ const previousBitmap = globalThis.createImageBitmap, previousDocument = globalThis.document
+ let attempts = 0, closed = 0
+ const canvas = { getContext: () => ({ drawImage() {} }), toBlob: (callback, type, quality) => {
+  attempts++; assert.ok(quality >= 0.66)
+  callback(new Blob([new Uint8Array(200 * 1024)], { type: 'image/webp' }))
+ } }
+ globalThis.createImageBitmap = async () => ({ width: 640, height: 640, close() { closed++ } })
+ globalThis.document = { createElement: () => canvas }
+ try {
+  const converted = await optimizeImage({ type: 'image/jpeg', size: 300 * 1024 })
+  assert.equal(converted.size, 200 * 1024)
+  assert.ok(attempts <= 9)
+  assert.equal(closed, 1)
+  const client = fakeClient()
+  await uploadProductImage(client, { productId, blob: converted, thumbnailBlob: new Blob([new Uint8Array(41 * 1024)], { type: 'image/webp' }), alt: 'Grande' })
+  assert.equal(client.calls.filter(call => call[0] === 'upload').length, 2)
+ } finally { globalThis.createImageBitmap = previousBitmap; globalThis.document = previousDocument }
+})
+
+test('miniatura respeta su presupuesto de 40 KB y no agranda un WebP que ya era liviano', async () => {
+ const previousBitmap = globalThis.createImageBitmap, previousDocument = globalThis.document
+ const original = new Blob([new Uint8Array(20 * 1024)], { type: 'image/webp' })
+ const canvas = { getContext: () => ({ drawImage() {} }), toBlob: (callback, type, quality) => callback(new Blob([new Uint8Array(quality > 0.8 ? 60 * 1024 : 30 * 1024)], { type: 'image/webp' })) }
+ globalThis.createImageBitmap = async () => ({ width: 500, height: 400, close() {} })
+ globalThis.document = { createElement: () => canvas }
+ try {
+  const converted = await optimizeImage(original, { maxDimension: 640, targetBytes: 40 * 1024 })
+  assert.ok(converted.size <= 40 * 1024)
+  assert.equal(converted, original)
+  await assert.rejects(optimizeImage(original, { targetBytes: 0 }), /objetivo/)
+ } finally { globalThis.createImageBitmap = previousBitmap; globalThis.document = previousDocument }
+})

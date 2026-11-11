@@ -1,13 +1,15 @@
 // Se recibe el cliente autenticado; la conexión y las pantallas se integran en etapas 6/7.
 export const IMAGE_BUCKET = 'productos'
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+export const TARGET_IMAGE_BYTES = 120 * 1024
+export const TARGET_THUMBNAIL_BYTES = 40 * 1024
 export const MAX_SOURCE_IMAGE_BYTES = 50 * 1024 * 1024
 export const SIGNED_IMAGE_SECONDS = 60
 const imageExtension = /\.(jpe?g|png|webp|gif|avif|bmp|ico|svg|heic|heif)$/i
 
-async function encodeWebpFallback(imageData) {
+async function encodeWebpFallback(imageData, quality) {
   const { encodeWebp } = await import('./webp-encoder.js')
-  return encodeWebp(imageData)
+  return encodeWebp(imageData, { quality: Math.round(quality * 100) })
 }
 
 async function decodeHeic(file) {
@@ -44,33 +46,54 @@ export function imagePath(productId, imageId = crypto.randomUUID()) {
   return `products/${productId.toLowerCase()}/${imageId.toLowerCase()}.webp`
 }
 
-export async function optimizeImage(file, { heicDecoder = decodeHeic, webpEncoder = encodeWebpFallback, maxDimension = 1600 } = {}) {
+export async function optimizeImage(file, { heicDecoder = decodeHeic, webpEncoder = encodeWebpFallback, maxDimension = 1600, targetBytes = TARGET_IMAGE_BYTES } = {}) {
   if (!file || (!file.type?.startsWith('image/') && !imageExtension.test(file.name || ''))) throw new Error('Elegí un archivo de imagen, como JPEG, PNG, WebP o HEIC/HEIF.')
   if (!file.size || file.size > MAX_SOURCE_IMAGE_BYTES) throw new Error('La imagen original debe pesar entre 1 byte y 50 MB.')
   if (!Number.isInteger(maxDimension) || maxDimension < 1 || maxDimension > 1600) throw new Error('Dimensiones de imagen inválidas.')
+  if (!Number.isInteger(targetBytes) || targetBytes < 1 || targetBytes > MAX_IMAGE_BYTES) throw new Error('Peso objetivo de imagen inválido.')
   const bitmap = await decodeImage(file, heicDecoder)
   try {
     if (!bitmap.width || !bitmap.height) throw new Error('La imagen no tiene dimensiones válidas.')
-    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height))
     const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Este navegador no permite procesar imágenes.')
-    context.drawImage(bitmap.source || bitmap, 0, 0, canvas.width, canvas.height)
-    let blob
-    try { blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.82)) }
-    catch { /* Si falla la exportación nativa, usar el codificador independiente. */ }
-    if (!blob || blob.type !== 'image/webp' || !blob.size) {
-      try {
-        blob = await webpEncoder(context.getImageData(0, 0, canvas.width, canvas.height))
-      } catch {
-        throw new Error('No se pudo iniciar la conversión a WebP. Revisá la conexión y volvé a intentar.')
+    const largest = Math.max(bitmap.width, bitmap.height)
+    let edge = Math.min(maxDimension, largest)
+    const minEdge = Math.min(edge, maxDimension <= 640 ? 320 : 640)
+    let best = file instanceof Blob && file.type === 'image/webp' && largest <= maxDimension ? file : null
+    while (true) {
+      const scale = edge / largest
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+      context.imageSmoothingEnabled = true
+      context.imageSmoothingQuality = 'high'
+      // Always resize from the decoded source, avoiding cumulative quality loss.
+      context.drawImage(bitmap.source || bitmap, 0, 0, canvas.width, canvas.height)
+      let smallest
+      for (const quality of [0.82, 0.74, 0.66]) {
+        let blob
+        try { blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality)) }
+        catch { /* Use the independent encoder when native WebP is unavailable. */ }
+        if (!blob || blob.type !== 'image/webp' || !blob.size) {
+          try {
+            blob = await webpEncoder(context.getImageData(0, 0, canvas.width, canvas.height), quality)
+          } catch {
+            throw new Error('No se pudo iniciar la conversión a WebP. Revisá la conexión y volvé a intentar.')
+          }
+        }
+        if (!blob || blob.type !== 'image/webp' || !blob.size) throw new Error('El codificador no pudo generar una imagen WebP válida.')
+        if (!best || blob.size < best.size) best = blob
+        if (best.size <= targetBytes) return best
+        if (!smallest || blob.size < smallest.size) smallest = blob
       }
+      if (edge <= minEdge) {
+        // The target guides compression; it must not reject a previously accepted upload.
+        if (best.size > MAX_IMAGE_BYTES) throw new Error('La imagen convertida supera los 5 MB. Probá con una imagen de menor tamaño.')
+        return best
+      }
+      // Estimate the next size from measured bytes; always shrink and keep a quality floor.
+      edge = Math.max(minEdge, Math.floor(edge * Math.min(0.85, Math.sqrt(targetBytes / smallest.size) * 0.95)))
     }
-    if (!blob || blob.type !== 'image/webp' || !blob.size) throw new Error('El codificador no pudo generar una imagen WebP válida.')
-    if (blob.size > MAX_IMAGE_BYTES) throw new Error('La imagen convertida supera los 5 MB. Probá con una imagen de menor tamaño.')
-    return blob
   } finally { bitmap.close() }
 }
 

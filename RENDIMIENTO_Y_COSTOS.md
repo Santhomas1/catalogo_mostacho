@@ -1,5 +1,7 @@
 # Rendimiento y costos de Mostacho 3D
 
+> La auditoría siguiente registra el estado anterior. Para la migración y optimización ya aplicadas, ver [Optimización de imágenes guardadas](OPTIMIZACION_IMAGENES_GUARDADAS.md).
+
 Revisión: 11 de noviembre de 2026. Implementación local; sin despliegues, cambios de planes, migraciones remotas ni eliminación de archivos del proyecto alojado. Se conservaron los cambios anteriores de variantes y WhatsApp.
 
 ## Resultado y prioridades
@@ -69,7 +71,7 @@ Comprobación del despliegue existente: `/` y `/catalogo` respondieron 200 y `x-
 - `src/pages/Product.jsx`: miniaturas de galería; conserva los cambios anteriores de elección de variante.
 - `src/lib/image-settings.js`, `.env.example`: activación compatible con el esquema anterior.
 - `vercel.json`: caché de assets y exclusión explícita de rutas privadas.
-- `supabase/migrations/20261111135346_miniaturas_privadas_productos.sql`: columna opcional, validación de ambos archivos, permisos de lectura bajo RLS, protección contra sobrescritura/borrado y cola de limpieza de ambas rutas.
+- `supabase/migrations/20261111161125_miniaturas_privadas_productos.sql`: columna opcional, validación de ambos archivos, permisos de lectura bajo RLS, protección contra sobrescritura/borrado y cola de limpieza de ambas rutas.
 - Pruebas y scripts en `tests/`, `scripts/measure-catalog.mjs`, `scripts/verify-thumbnail-migration.mjs`.
 
 ## Evidencia de verificación
@@ -85,6 +87,8 @@ Las pruebas de reloj comprueban que el foco reciente no repite consultas, el pre
 Veredicto: código y pruebas locales aprobados; verificación de activación de miniaturas y de los nuevos encabezados en un despliegue, pendiente. No se afirma que esos cambios ya estén funcionando en producción.
 
 ## Activación manual y reversión
+
+Actualización posterior de compresión: se conservan los formatos admitidos, originales de hasta 50 MB y el límite existente de 5 MB para el archivo convertido. El procesador busca aproximadamente 120 KB por foto y 40 KB por miniatura con calidad 82/74/66 y reducción de resolución cuando hace falta. Estos objetivos no son requisitos nuevos de subida: si no los alcanza dentro del margen de calidad, guarda la versión más liviana obtenida que cumpla el límite original. No amplía imágenes pequeñas ni recorta sus proporciones. El panel muestra el peso anterior y el guardado. No se modifican archivos existentes ni la configuración del bucket. Las cifras anteriores corresponden a la auditoría realizada en ese momento.
 
 1. Se puede revisar/desplegar el código con `VITE_PRODUCT_THUMBNAILS=false` sin cambiar la base. Confirmar build `npm run build`, salida `dist` y variables públicas; nunca colocar claves secretas en variables `VITE_*`.
 2. Probar la migración en una instalación de staging con el mismo historial. Revisar y aplicar luego la migración aditiva mediante el flujo autorizado del proyecto. No se aplicó automáticamente. Conservar el bucket privado y sus políticas.

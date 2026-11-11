@@ -14,7 +14,7 @@ export default function Catalog() {
   const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? Math.min(rawPage, 100000) : 1
   const loader = useCallback(() => catalogService().list({ query, category, page }), [query, category, page])
   const categoryLoader = useCallback(() => catalogService().categories(), [])
-  const { data, loading, error, retry } = useRemote(loader, 45000)
+  const { data, loading, error, retry } = useRemote(loader, 45000, query ? 250 : 0)
   const { data: categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useRemote(categoryLoader, 45000)
   const currentPage = data?.page || page
   const hasFilters = Boolean(query || category)

@@ -66,7 +66,7 @@ test('recorrido de dos productos: catálogo, detalle, cantidades, seguir eligien
   const send=view.renderer.root.findAllByType('a').find(a=>String(a.props.href).includes('wa.me/5493816795568?text='))
   assert.ok(send)
   const summary=decodeURIComponent(send.props.href)
-  for(const fragment of ['Diseño Ñ 1','Diseño Ñ 2','SKU-1','SKU-2','Cantidad: 2','Cantidad: 3','10.000,00','Acordar con el vendedor','Total final a confirmar'])assert.ok(summary.includes(fragment),fragment)
+  for(const fragment of ['Diseño Ñ 1','Diseño Ñ 2','Blanco','Cantidad: 2','Cantidad: 3','10.000,00','Las opciones a acordar se calculan aparte.','Total final y plazo a confirmar'])assert.ok(summary.includes(fragment),fragment)
   assert.equal(view.context().items.length,2)
   assert.equal(JSON.parse(view.memory.get('mostacho-cart-v1')).length,2)
  }finally{await view.close()}
@@ -198,7 +198,7 @@ test('carrito largo ofrece texto completo y conserva selección cuando falla el 
   assert.ok(text(view).includes('El resumen es largo.'))
   assert.equal(button(view,'Enviar carrito por WhatsApp').props.disabled,true)
   await act(async()=>{await button(view,'Copiar resumen').props.onClick()})
-  assert.ok(copied.includes('SKU-1'));assert.ok(copied.includes('SKU-60'))
+  assert.ok(copied.includes('Diseño Ñ 1'));assert.ok(copied.includes('Diseño Ñ 60'))
   assert.equal(view.renderer.root.findByType('textarea').props.value,copied)
   assert.ok(text(view).includes('Seleccioná y copiá el resumen'))
   assert.equal(view.context().items.length,60)
@@ -225,9 +225,11 @@ test('paginación conserva búsqueda y categoría; limpiar filtros funciona con 
  const requests = [], api = backend(Array.from({length:25}, (_, i) => product(i + 1)))
  const view = await mountApp('/catalogo?q=maceta&categoria=hogar', [], async input => { requests.push(new URL(input)); return api(input) })
  try {
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 280)) })
   assert.ok(button(view, 'Limpiar filtros'))
   assert.ok(view.renderer.root.findAllByType('a').some(link => link.props.href === '/catalogo?q=maceta&categoria=hogar&pagina=2'))
   await clickLink(view, '/catalogo?q=maceta&categoria=hogar&pagina=2')
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 280)) })
   assert.ok(requests.some(url => url.searchParams.get('offset') === '12' && url.searchParams.get('categorias.slug') === 'eq.hogar' && url.searchParams.get('nombre')?.includes('maceta')))
   assert.equal(document.querySelector('link[rel="canonical"]').attributes.href, 'https://example.com/catalogo?q=maceta&categoria=hogar&pagina=2')
   await act(async () => button(view, 'Limpiar filtros').props.onClick())
@@ -273,5 +275,22 @@ test('página fuera de rango normaliza la URL y sus metadatos al volver a la pri
   assert.equal(document.querySelector('link[rel="canonical"]').attributes.href, 'https://example.com/catalogo')
   assert.equal(document.title, 'Catálogo · Mostacho 3D')
   assert.ok(text(view).includes('Diseño Ñ 1'))
+ } finally { await view.close() }
+})
+
+test('selector distingue variantes por color y actualiza su precio', async () => {
+ const row = product(90)
+ const first = { ...row.variantes_producto[0], nombre: 'Grande', colores: { nombre: 'Blanco', activo: true } }
+ const second = { ...first, id: uuid(9090), sku: 'AZUL', precio: '7500.00', colores: { nombre: 'Azul', activo: true } }
+ row.variantes_producto = [first, second]
+ const view = await mountApp('/productos/' + row.slug, [], backend([row]))
+ try {
+  const selector = view.renderer.root.findByProps({ id: 'variant' })
+  const labels = selector.findAllByType('option').map(option => option.children.join(''))
+  assert.ok(labels[0].includes('Blanco'))
+  assert.ok(labels[1].includes('Azul'))
+  await act(async () => { selector.props.onChange({ target: { value: second.id } }) })
+  assert.ok(text(view).includes('7.500,00'))
+  assert.ok(view.renderer.root.findAllByType('dd').some(node => node.children.includes('Azul')))
  } finally { await view.close() }
 })

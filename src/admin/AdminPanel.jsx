@@ -10,6 +10,7 @@ import DeleteConfirm from './DeleteConfirm'
 import RegistryPanel from './RegistryPanel'
 import ProductWorkspace from './ProductWorkspace'
 import { cleanImageQueue } from '@/services/images'
+import { PRODUCT_THUMBNAILS } from '@/lib/image-settings'
 
 export default function AdminPanel({ client, service }) {
   const [tab,setTab]=useState('productos')
@@ -28,7 +29,7 @@ function ProductList({service,onSelect,message}) {
 function CleanupPanel({client}) {
   const [confirm,setConfirm]=useState(false)
   const action=useAdminAction()
-  const loader=useCallback(async()=>{const {data,error}=await client.from('archivos_pendientes_limpieza').select('*',{count:'exact'}).order('creado_en').limit(50);if(error)throw error;return data},[client])
+  const loader=useCallback(async()=>{const {data,error}=await client.from('archivos_pendientes_limpieza').select('*').order('creado_en').limit(50);if(error)throw error;return data},[client])
   const {data,loading,error,retry}=useRemote(loader)
-  return <section><h2>Limpieza de archivos</h2><p>Estos archivos fueron desvinculados o quedaron pendientes al fallar una carga. La limpieza vuelve a verificar que no tengan referencias antes de eliminarlos.</p><RemoteState loading={loading} error={error} retry={retry}/><AdminFeedback action={action}/>{data && <><p>{data.length} pendientes en este lote (hasta 50).</p><Button variant="outline" disabled={action.busy || !data.length} onClick={()=>setConfirm(true)}>Limpiar este lote</Button><div className="admin-list">{data.map(row=><article key={row.id}><div><strong className="admin-path">{row.storage_path}</strong><p>{row.motivo}</p></div></article>)}</div></>}{confirm && <DeleteConfirm title="¿Eliminar definitivamente hasta 50 archivos sin referencia?" busy={action.busy} onCancel={()=>setConfirm(false)} onConfirm={()=>action.run(async()=>{const results=await cleanImageQueue(client);setConfirm(false);retry();if(results.some(r=>r.error))throw new Error('Algunos archivos siguen pendientes. Se conservaron para reintentar.');if(results.some(r=>r.skipped))throw new Error('Se omitieron archivos que tienen referencias. No se borraron.');},'Lote de limpieza completado.')} />}</section>
+  return <section><h2>Limpieza de archivos</h2><p>Estos archivos fueron desvinculados o quedaron pendientes al fallar una carga. La limpieza vuelve a verificar que no tengan referencias antes de eliminarlos.</p><RemoteState loading={loading} error={error} retry={retry}/><AdminFeedback action={action}/>{data && <><p>{data.length} pendientes en este lote (hasta 50).</p><Button variant="outline" disabled={action.busy || !data.length} onClick={()=>setConfirm(true)}>Limpiar este lote</Button><div className="admin-list">{data.map(row=><article key={row.id}><div><strong className="admin-path">{row.storage_path}</strong><p>{row.motivo}</p></div></article>)}</div></>}{confirm && <DeleteConfirm title="¿Eliminar definitivamente hasta 50 archivos sin referencia?" busy={action.busy} onCancel={()=>setConfirm(false)} onConfirm={()=>action.run(async()=>{const results=await cleanImageQueue(client,50,undefined,PRODUCT_THUMBNAILS);setConfirm(false);retry();if(results.some(r=>r.error))throw new Error('Algunos archivos siguen pendientes. Se conservaron para reintentar.');if(results.some(r=>r.skipped))throw new Error('Se omitieron archivos que tienen referencias. No se borraron.');},'Lote de limpieza completado.')} />}</section>
 }

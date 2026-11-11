@@ -91,3 +91,93 @@ test('un fallo de red no modifica la selección guardada', async () => {
  await assert.rejects(refreshCartSnapshot({ byVariantIds: async () => { throw Error('red') } }, items))
  assert.deepEqual(items, [{ variantId: vid, quantity: 2 }])
 })
+
+
+test('listado limita las fotos a la portada; detalle y carrito evitan conteos exactos', async () => {
+ const calls = []
+ const service = createCatalogService(clientWith(async (input, options) => {
+  const url = new URL(input)
+  calls.push({ url, prefer: new Headers(options.headers).get('prefer') || '' })
+  if (url.searchParams.get('slug')) return json(row)
+  return json([row], { 'Content-Range': '0-0/1' })
+ }))
+ await service.list()
+ assert.equal(calls[0].url.searchParams.get('imagenes_producto.limit'), '1')
+ assert.equal(calls[0].url.searchParams.get('imagenes_producto.order'), 'orden.asc')
+ assert.ok(!calls[0].url.searchParams.get('select').includes('instrucciones_cuidado'))
+ await service.bySlug(row.slug)
+ assert.ok(!calls[1].prefer.includes('count=exact'))
+ await service.byProductIds([pid])
+ assert.ok(!calls[2].prefer.includes('count=exact'))
+ assert.ok(!calls[2].url.searchParams.get('select').includes('imagenes_producto'))
+ await service.list({ featured: true, pageSize: 6, includeCount: false })
+ assert.ok(!calls[3].prefer.includes('count=exact'))
+})
+
+test('URLs de portada se reutilizan brevemente sin cachear precios ni extender su vencimiento', async () => {
+ let now = 1000, signs = 0, reads = 0
+ const picture = { id: 'img', storage_path: 'products/path.webp', texto_alternativo: 'Portada', orden: 0 }
+ const service = createCatalogService(clientWith(async (input, options) => {
+  if (String(input).includes('/storage/')) {
+   signs++
+   const payload = JSON.parse(options.body)
+   assert.equal(payload.expiresIn, 60)
+   return json(payload.paths.map(path => ({ path, signedURL: '/object/sign/productos/' + path + '?token=' + signs })))
+  }
+  reads++
+  return json([{ ...row, precio: String(reads), imagenes_producto: [picture] }], { 'Content-Range': '0-0/1' })
+ }), { reuseSignedUrls: true, now: () => now })
+ const a = await service.list()
+ now += 10000
+ const b = await service.list()
+ assert.equal(reads, 2)
+ assert.equal(signs, 1)
+ assert.equal(a.products[0].images[0].url, b.products[0].images[0].url)
+ assert.notEqual(a.products[0].price, b.products[0].price)
+ now += 45000
+ const c = await service.list()
+ assert.equal(signs, 2)
+ assert.notEqual(c.products[0].images[0].url, b.products[0].images[0].url)
+})
+
+test('miniaturas requieren activacion; listado firma solo portada pequena y detalle conserva ambas resoluciones', async () => {
+ const photo = { id: 'picture', storage_path: 'products/full.webp', thumbnail_path: 'products/small.webp', texto_alternativo: 'Vista', orden: 0 }
+ const calls = []
+ const client = clientWith(async (input, options) => {
+  const url = new URL(input)
+  if (url.pathname.includes('/storage/')) {
+   const { paths } = JSON.parse(options.body); calls.push(paths)
+   return json(paths.map(path => ({ path, signedURL: '/object/sign/productos/' + path + '?token=test' })))
+  }
+  const result = { ...row, imagenes_producto: [photo] }
+  return json(url.searchParams.has('slug') ? result : [result], { 'Content-Range': '0-0/1' })
+ })
+ const service = createCatalogService(client, { thumbnails: true })
+ const list = await service.list()
+ assert.deepEqual(calls[0], ['products/small.webp'])
+ assert.ok(list.products[0].images[0].url.includes('small.webp'))
+ const detail = await service.bySlug(row.slug)
+ assert.deepEqual(calls[1], ['products/full.webp', 'products/small.webp'])
+ assert.ok(detail.product.images[0].url.includes('full.webp'))
+ assert.ok(detail.product.images[0].thumbnailUrl.includes('small.webp'))
+ await createCatalogService(client).list()
+ assert.deepEqual(calls[2], ['products/full.webp'])
+})
+
+test('lecturas simultaneas se unifican; una carga posterior vuelve a leer datos y errores no quedan cacheados', async () => {
+ let reads = 0, fail = false
+ const service = createCatalogService(clientWith(async () => {
+  reads++
+  await new Promise(resolve => setTimeout(resolve, 5))
+  return fail ? new Response(JSON.stringify({ message: 'Unavailable' }), { status: 400 }) : json([row])
+ }), { reuseSignedUrls: true })
+ await Promise.all([service.list(), service.list()])
+ assert.equal(reads, 1)
+ await service.list()
+ assert.equal(reads, 2)
+ fail = true
+ await assert.rejects(service.list())
+ fail = false
+ await service.list()
+ assert.equal(reads, 4)
+})

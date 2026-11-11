@@ -1,0 +1,124 @@
+{
+  "date": "2026-11-11",
+  "source": "read-only anonymous requests against configured Supabase project",
+  "scope": "list first page + first product detail + featured six",
+  "thumbnailFeature": false,
+  "bytes": "decoded response bodies, not billed egress",
+  "timing": "single sequential sample, not statistically representative",
+  "results": [
+    {
+      "label": "before",
+      "products": 70,
+      "requests": [
+        {
+          "type": "data",
+          "status": 206,
+          "bytes": 14157,
+          "ms": 491,
+          "exactCount": true,
+          "signedPaths": 0
+        },
+        {
+          "type": "sign",
+          "status": 200,
+          "bytes": 14399,
+          "ms": 173,
+          "exactCount": false,
+          "signedPaths": 23
+        },
+        {
+          "type": "data",
+          "status": 200,
+          "bytes": 2417,
+          "ms": 454,
+          "exactCount": true,
+          "signedPaths": 0
+        },
+        {
+          "type": "sign",
+          "status": 200,
+          "bytes": 1879,
+          "ms": 159,
+          "exactCount": false,
+          "signedPaths": 3
+        },
+        {
+          "type": "data",
+          "status": 200,
+          "bytes": 1820,
+          "ms": 121,
+          "exactCount": true,
+          "signedPaths": 0
+        },
+        {
+          "type": "sign",
+          "status": 200,
+          "bytes": 3131,
+          "ms": 139,
+          "exactCount": false,
+          "signedPaths": 5
+        }
+      ],
+      "responseBytes": 37803,
+      "exactCounts": 3,
+      "signedPaths": 31
+    },
+    {
+      "label": "after",
+      "products": 70,
+      "requests": [
+        {
+          "type": "data",
+          "status": 206,
+          "bytes": 10945,
+          "ms": 140,
+          "exactCount": true,
+          "signedPaths": 0
+        },
+        {
+          "type": "sign",
+          "status": 200,
+          "bytes": 7513,
+          "ms": 162,
+          "exactCount": false,
+          "signedPaths": 12
+        },
+        {
+          "type": "data",
+          "status": 200,
+          "bytes": 2417,
+          "ms": 141,
+          "exactCount": false,
+          "signedPaths": 0
+        },
+        {
+          "type": "sign",
+          "status": 200,
+          "bytes": 1253,
+          "ms": 163,
+          "exactCount": false,
+          "signedPaths": 2
+        },
+        {
+          "type": "data",
+          "status": 200,
+          "bytes": 670,
+          "ms": 139,
+          "exactCount": false,
+          "signedPaths": 0
+        },
+        {
+          "type": "sign",
+          "status": 200,
+          "bytes": 627,
+          "ms": 162,
+          "exactCount": false,
+          "signedPaths": 1
+        }
+      ],
+      "responseBytes": 23425,
+      "exactCounts": 1,
+      "signedPaths": 15
+    }
+  ]
+}

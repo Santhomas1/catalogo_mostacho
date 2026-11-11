@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { catalogService } from '@/services/catalog'
 import { useRemote } from '@/hooks/useRemote'
 import RemoteState from '@/components/RemoteState'
-import { ProductVisual } from '@/components/ProductCard'
+import { ProductVisual, ProductPhoto } from '@/components/ProductCard'
 import { useCart } from '@/components/CartProvider'
 import { Button } from '@/components/ui/button'
 import EmptyPage from '@/pages/EmptyPage'
@@ -11,6 +11,7 @@ import { variantPriceLabel, productionLabel, AGREED_PRICE_LABEL, isAgreedPrice, 
 import PageMetadata from '@/components/PageMetadata'
 import { productMetadata } from '@/lib/metadata'
 import { business } from '@/lib/business'
+import { variantLabel } from '@/lib/variants'
 export default function Product() {
   const { slug } = useParams()
   const loader = useCallback(() => catalogService().bySlug(slug), [slug])
@@ -51,18 +52,20 @@ function ProductDetail({ product }) {
     <div className="product-detail">
       <section className="detail-gallery" aria-label="Fotos del producto" data-detail-reveal>
         <div className="detail-image-stage">{images.length && !failed
-          ? <img className="product-photo" fetchPriority="high" src={images[imageIndex].url} alt={images[imageIndex].alt} width="800" height="800" decoding="async" onError={() => setFailed(true)} />
+          ? <ProductPhoto image={images[imageIndex]} className="product-photo" fetchPriority="high" alt={images[imageIndex].alt} width="800" height="800" decoding="async" onError={() => setFailed(true)} />
           : <ProductVisual />}</div>
         {images.length > 0 && <div className="detail-gallery-nav"><p aria-live="polite" aria-atomic="true">Imagen {imageIndex + 1} de {images.length}</p>{images.length > 1 && <div><button type="button" disabled={imageIndex === 0} aria-label="Imagen anterior" onClick={() => showPhoto(imageIndex - 1)}>Anterior</button><button type="button" disabled={imageIndex === images.length - 1} aria-label="Imagen siguiente" onClick={() => showPhoto(imageIndex + 1)}>Siguiente</button></div>}</div>}
-        {images.length > 1 && <div className="gallery-thumbnails" role="group" aria-label="Elegir foto">{images.map((image, i) => <button type="button" key={image.id || image.path || i} aria-label={`Ver imagen ${i + 1}`} aria-pressed={imageIndex === i} onClick={() => showPhoto(i)}><img src={image.url} alt="" loading="lazy" onError={e => { if (!e.currentTarget.src.endsWith('/images/producto-sin-imagen.svg')) e.currentTarget.src = '/images/producto-sin-imagen.svg' }} /></button>)}</div>}
+        {images.length > 1 && <div className="gallery-thumbnails" role="group" aria-label="Elegir foto">{images.map((image, i) => <button type="button" key={image.id || image.path || i} aria-label={`Ver imagen ${i + 1}`} aria-pressed={imageIndex === i} onClick={() => showPhoto(i)}><ProductPhoto image={image} thumbnail alt="" loading="lazy" onError={e => { if (!e.currentTarget.src.endsWith('/images/producto-sin-imagen.svg')) e.currentTarget.src = '/images/producto-sin-imagen.svg' }} /></button>)}</div>}
       </section>
       <div className="detail-info" data-detail-reveal>
         <header className="detail-heading"><div className="detail-meta"><p>{product.category}</p><span>{variant?.availability === 'no_disponible' ? 'No disponible' : 'Por pedido'}</span></div><h1>{product.name}</h1></header>
+        {variant && <div className="detail-order">
+          <label className="detail-label" htmlFor="variant">Material, color y tamaño</label>
+          <select id="variant" value={selected} onChange={e => { setSelected(e.target.value); setQuantity('1'); setNotice('') }}>{variants.map(v => <option key={v.id} value={v.id} disabled={v.availability === 'no_disponible'}>{variantLabel(v)}{v.availability === 'no_disponible' ? ' · No disponible' : ''}</option>)}</select>
+          <dl className="detail-specs"><div><dt>Material</dt><dd>{variant.material}</dd></div><div><dt>Color</dt><dd>{variant.color}</dd></div><div><dt>Medidas</dt><dd>{variant.dimensions}</dd></div></dl>
+        </div>}
         <div className="detail-price-block" aria-live="polite"><p className="detail-label">{priceToAgree ? 'Precio a consultar' : 'Precio por unidad'}</p><p className={`detail-price${priceToAgree ? ' detail-price-quote' : ''}`}>{displayedPrice ? variantPriceLabel(displayedPrice) : AGREED_PRICE_LABEL}</p><p className="detail-price-hint">{variant ? productionLabel(variant) : 'Tamaños, materiales y plazo a coordinar.'}</p></div>
         {variant ? <div className="detail-order">
-          <label className="detail-label" htmlFor="variant">Material, color y tamaño</label>
-          <select id="variant" value={selected} onChange={e => { setSelected(e.target.value); setQuantity('1'); setNotice('') }}>{variants.map(v => <option key={v.id} value={v.id} disabled={v.availability === 'no_disponible'}>{v.name}{v.availability === 'no_disponible' ? ' · No disponible' : ''}</option>)}</select>
-          <dl className="detail-specs"><div><dt>Material</dt><dd>{variant.material}</dd></div><div><dt>Color</dt><dd>{variant.color}</dd></div><div><dt>Medidas</dt><dd>{variant.dimensions}</dd></div></dl>
           <div className="detail-purchase-row"><div><label className="detail-label" htmlFor="quantity">Cantidad</label><div className="detail-quantity"><button type="button" aria-label="Reducir cantidad" disabled={!Number.isSafeInteger(amount) || amount <= 1} onClick={() => setQuantity(String(amount - 1))}>−</button><input id="quantity" aria-invalid={!Number.isSafeInteger(amount) || amount < 1} aria-describedby={!valid ? "detail-quantity-help" : undefined} type="number" min="1" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} /><button type="button" aria-label="Aumentar cantidad" disabled={!Number.isSafeInteger(amount) || amount < 1 || amount >= Number.MAX_SAFE_INTEGER} onClick={() => setQuantity(String(amount + 1))}>+</button></div></div><Button className="detail-primary" disabled={!valid} onClick={() => { add(variant.id, amount, product); setNotice('Agregado al carrito. Podés seguir eligiendo.') }}>Agregar al carrito</Button></div>
           {!valid && <p id="detail-quantity-help" className="detail-feedback" role="status">Ingresá una cantidad entera positiva para una opción disponible.</p>}
           <p className="detail-feedback" role="status">{notice}</p><Link className="detail-secondary-link" to="/carrito">Ver carrito</Link>

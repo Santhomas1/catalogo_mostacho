@@ -223,3 +223,65 @@ test('acepta originales de 30 y 50 MB y sube solamente el WebP optimizado', asyn
   if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument
  }
 })
+
+
+test('miniatura limita el lado mayor a 640 sin ampliar imagenes pequenas', async () => {
+ const previousBitmap = globalThis.createImageBitmap, previousDocument = globalThis.document
+ let width = 1600, height = 1200
+ const canvas = { getContext: () => ({ drawImage() {} }), toBlob: callback => callback(blob) }
+ globalThis.createImageBitmap = async () => ({ width, height, close() {} })
+ globalThis.document = { createElement: () => canvas }
+ try {
+  await optimizeImage(blob, { maxDimension: 640 })
+  assert.equal(canvas.width, 640); assert.equal(canvas.height, 480)
+  width = 200; height = 100
+  await optimizeImage(blob, { maxDimension: 640 })
+  assert.equal(canvas.width, 200); assert.equal(canvas.height, 100)
+  await assert.rejects(optimizeImage(blob, { maxDimension: 0 }))
+ } finally { globalThis.createImageBitmap = previousBitmap; globalThis.document = previousDocument }
+})
+
+test('carga ambas resoluciones antes de guardar la referencia; si falla, compensa los dos archivos', async () => {
+ const client = fakeClient()
+ const saved = await uploadProductImage(client, { productId, blob, thumbnailBlob: blob, alt: 'Vista' })
+ const uploads = client.calls.filter(call => call[0] === 'upload')
+ assert.equal(uploads.length, 2)
+ assert.notEqual(saved.storage_path, saved.thumbnail_path)
+ assert.equal(saved.storage_path, uploads[0][2])
+ assert.equal(saved.thumbnail_path, uploads[1][2])
+ const failed = fakeClient({ saveError: new Error('No se pudo guardar') })
+ await assert.rejects(uploadProductImage(failed, { productId, blob, thumbnailBlob: blob, alt: 'Vista' }))
+ assert.equal(failed.calls.find(call => call[0] === 'remove')[1].length, 2)
+})
+
+test('firma por lotes deduplica rutas y mantiene el vencimiento y los errores parciales', async () => {
+ const { signedImageUrls } = await import('../src/services/images.js')
+ const requests = []
+ const client = { storage: { from: () => ({ createSignedUrls: async (paths, ttl) => {
+  requests.push({ paths, ttl })
+  return { data: [{ path: 'a', signedUrl: 'https://example.invalid/a' }, { path: 'b', error: 'denied' }] }
+ } }) } }
+ const urls = await signedImageUrls(client, ['a', 'b', 'a'])
+ assert.deepEqual(requests, [{ paths: ['a', 'b'], ttl: 60 }])
+ assert.equal(urls.get('a'), 'https://example.invalid/a')
+ assert.equal(urls.has('b'), false)
+ assert.equal((await signedImageUrls(client, [])).size, 0)
+ assert.equal(requests.length, 1)
+})
+
+
+test('si falla la subida de la miniatura, retira el original nuevo sin guardar una referencia incompleta', async () => {
+ const client = fakeClient()
+ const from = client.storage.from
+ let uploads = 0
+ client.storage.from = bucket => {
+  const storage = from(bucket)
+  return { ...storage, upload: async (...args) => {
+   uploads++
+   return uploads === 2 ? { error: new Error('Thumbnail upload failed') } : storage.upload(...args)
+  } }
+ }
+ await assert.rejects(uploadProductImage(client, { productId, blob, thumbnailBlob: blob, alt: 'Vista' }), /Thumbnail upload failed/)
+ assert.equal(client.calls.some(call => call[0] === 'insert' && call[1] === 'imagenes_producto'), false)
+ assert.equal(client.calls.find(call => call[0] === 'remove')[1].length, 1)
+})

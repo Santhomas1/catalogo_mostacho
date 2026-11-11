@@ -11,6 +11,20 @@ export function ProductVisual() {
   return <div className="product-visual"><img className="product-placeholder" src="/images/producto-sin-imagen.svg" alt="Imagen no disponible" width="640" height="640" /></div>
 }
 
+// Signed tokens rotate; an already decoded immutable image needs no new download.
+// Images that have not loaded keep the latest signed URL (including lazy images).
+export function ProductPhoto({ image, thumbnail = false, onLoad, ...props }) {
+  const requested = thumbnail ? (image.thumbnailUrl || image.url) : image.url
+  const identity = (image.path || image.id || requested) + (thumbnail ? ':thumbnail' : ':full')
+  const [loaded, setLoaded] = useState(null)
+  const source = loaded?.identity === identity ? loaded.src : requested
+  return <img {...props} src={source} onLoad={event => {
+    const actual = event.currentTarget?.currentSrc || event.currentTarget?.src || source
+    if (!actual.endsWith('/images/producto-sin-imagen.svg')) setLoaded({ identity, src: source })
+    onLoad?.(event)
+  }} />
+}
+
 export default function ProductCard({ product, headingLevel = 2 }) {
   const Heading = headingLevel === 3 ? 'h3' : 'h2'
   const [imageFailed, setImageFailed] = useState(false)
@@ -28,7 +42,7 @@ export default function ProductCard({ product, headingLevel = 2 }) {
   return <Card className="product-card" role="article" aria-label={product.name}>
     <div className="product-card-core"><div className="product-media">
       <Link className="product-image-link" to={href} aria-label={`Ver ${product.name}`} tabIndex={-1}>
-        {cover && !imageFailed ? <img className="product-photo" src={cover.url} alt={cover.alt} loading="lazy" decoding="async" width="640" height="640" onError={() => setImageFailed(true)} /> : <ProductVisual />}
+        {cover && !imageFailed ? <ProductPhoto image={cover} className="product-photo" alt={cover.alt} loading="lazy" decoding="async" width="640" height="640" onError={() => setImageFailed(true)} /> : <ProductVisual />}
       </Link>
       {product.demo && <span className="demo-badge">Producto de prueba</span>}
     </div>

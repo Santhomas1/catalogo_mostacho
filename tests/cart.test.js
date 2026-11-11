@@ -33,7 +33,8 @@ test('mensaje reúne variantes, total y caracteres especiales sin perder texto',
  const lines = resolveCart([{ variantId: 'v1', quantity: 2 }, { variantId: 'v2', quantity: 3 }], [product])
  const message = makeSummary(lines, 'https://example.com')
  assert.equal(decodeURIComponent(encodeURIComponent(message)), message)
- for (const fragment of ['SKU-1', 'SKU-2', 'Cantidad: 2', 'Cantidad: 3', '950,00', 'Diseño á & ñ', 'https://example.com/productos/diseno', '4 días']) assert.ok(message.includes(fragment), fragment)
+ for (const fragment of ['Hola Mostacho 3D, estoy interesado en:', product.name, ...product.variants.map(v => v.name), ...product.variants.map(v => v.dimensions), 'Cantidad: 2', 'Cantidad: 3', '950,00', 'https://example.com/productos/diseno']) assert.ok(message.includes(fragment), fragment)
+ for (const redundant of ['cotizar', 'SKU:', 'Precio:', 'Subtotal:', 'días estimados']) assert.ok(!message.includes(redundant), redundant)
  assert.equal(lines.reduce((s, l) => s + l.subtotal, 0), 950)
 })
 test('monedas distintas no se suman y carrito vacío no produce mensaje', () => {
@@ -63,6 +64,12 @@ test('carrito mixto informa subtotal conocido y excluye lo pendiente de cotizar'
  const message = makeSummary(lines, 'https://example.com')
  assert.ok(message.includes('Subtotal con precio publicado:'))
  assert.ok(message.includes('200,00'))
- assert.ok(message.includes('Total final a confirmar'))
+ assert.ok(message.includes('Total final y plazo a confirmar'))
  assert.ok(!message.includes('Total estimado:'))
+})
+test('mensaje distingue colores aunque las variantes compartan nombre', () => {
+ const colored = { ...product, variants: product.variants.map((v, i) => ({ ...v, name: 'Grande', material: 'PLA', color: i ? 'Azul' : 'Blanco' })) }
+ const message = makeSummary(resolveCart([{ variantId: 'v1', quantity: 2 }, { variantId: 'v2', quantity: 1 }], [colored]), 'https://example.com')
+ assert.ok(message.includes('Variante: Grande · PLA · Blanco'))
+ assert.ok(message.includes('Variante: Grande · PLA · Azul'))
 })

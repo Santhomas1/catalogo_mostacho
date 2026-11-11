@@ -1,6 +1,6 @@
 import test, { after } from 'node:test'
 import assert from 'node:assert/strict'
-import { render, renderCard, closeClient } from './react-harness.js'
+import { render, renderCard, mountPhoto, act, closeClient } from './react-harness.js'
 
 test('catálogo y detalle muestran carga inicial sin datos locales ni falsas inexistencias', () => {
  const catalog = render('/catalogo?q=maceta')
@@ -49,3 +49,24 @@ test('tarjetas distinguen precio fijo, a acordar y opciones mixtas', () => {
 })
 
 after(closeClient)
+
+
+test('foto ya cargada conserva su URL al renovar firmas; foto pendiente y archivo reemplazado usan la URL nueva', async () => {
+ const image = { path: 'products/a.webp', url: 'https://example.invalid/a?token=first' }
+ const view = await mountPhoto(image)
+ try {
+  const pending = { ...image, url: 'https://example.invalid/a?token=second' }
+  await view.update(pending)
+  assert.equal(view.renderer.root.findByType('img').props.src, pending.url)
+  await act(async () => { view.renderer.root.findByType('img').props.onLoad({}) })
+  await view.update({ ...image, url: 'https://example.invalid/a?token=third' })
+  assert.equal(view.renderer.root.findByType('img').props.src, pending.url, 'no new download for the same loaded file')
+  const replacement = { path: 'products/b.webp', url: 'https://example.invalid/b?token=new' }
+  await view.update(replacement)
+  assert.equal(view.renderer.root.findByType('img').props.src, replacement.url)
+  await view.update({ ...replacement, url: '/images/producto-sin-imagen.svg' })
+  await act(async () => { view.renderer.root.findByType('img').props.onLoad({}) })
+  await view.update(replacement)
+  assert.equal(view.renderer.root.findByType('img').props.src, replacement.url, 'fallback must recover after a signing error')
+ } finally { await view.close() }
+})

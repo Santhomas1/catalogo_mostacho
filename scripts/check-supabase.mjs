@@ -6,7 +6,7 @@ const url = process.env.VITE_SUPABASE_URL
 const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
 assert.ok(url && key?.startsWith('sb_publishable_'), 'Configurar las variables públicas de Supabase.')
 const client = createClient(url, key, { auth: { persistSession: false }, global: { fetch: (input, options = {}) => fetch(input, { ...options, signal: AbortSignal.timeout(15000) }) } })
-const service = createCatalogService(client)
+const service = createCatalogService(client, { thumbnails: process.env.VITE_PRODUCT_THUMBNAILS === 'true' })
 const list = await service.list()
 const categories = await service.categories()
 const filtered = await service.list({ query: 'prueba-que-no-debe-existir-8123', category: 'sin-categoria-8123', page: 2 })

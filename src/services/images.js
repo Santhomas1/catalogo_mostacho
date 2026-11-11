@@ -44,13 +44,14 @@ export function imagePath(productId, imageId = crypto.randomUUID()) {
   return `products/${productId.toLowerCase()}/${imageId.toLowerCase()}.webp`
 }
 
-export async function optimizeImage(file, { heicDecoder = decodeHeic, webpEncoder = encodeWebpFallback } = {}) {
+export async function optimizeImage(file, { heicDecoder = decodeHeic, webpEncoder = encodeWebpFallback, maxDimension = 1600 } = {}) {
   if (!file || (!file.type?.startsWith('image/') && !imageExtension.test(file.name || ''))) throw new Error('Elegí un archivo de imagen, como JPEG, PNG, WebP o HEIC/HEIF.')
   if (!file.size || file.size > MAX_SOURCE_IMAGE_BYTES) throw new Error('La imagen original debe pesar entre 1 byte y 50 MB.')
+  if (!Number.isInteger(maxDimension) || maxDimension < 1 || maxDimension > 1600) throw new Error('Dimensiones de imagen inválidas.')
   const bitmap = await decodeImage(file, heicDecoder)
   try {
     if (!bitmap.width || !bitmap.height) throw new Error('La imagen no tiene dimensiones válidas.')
-    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height))
     const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.round(bitmap.width * scale))
     canvas.height = Math.max(1, Math.round(bitmap.height * scale))
@@ -73,24 +74,32 @@ export async function optimizeImage(file, { heicDecoder = decodeHeic, webpEncode
   } finally { bitmap.close() }
 }
 
-export async function uploadProductImage(client, { productId, blob, alt, order = 0 }) {
+export async function uploadProductImage(client, { productId, blob, thumbnailBlob, alt, order = 0 }) {
   if (!alt?.trim()) throw new Error('Describí la imagen para su texto alternativo.')
   if (!Number.isSafeInteger(order) || order < 0) throw new Error('El orden debe ser un entero no negativo.')
   if (blob.type !== 'image/webp' || !blob.size || blob.size > MAX_IMAGE_BYTES) throw new Error('Primero optimizá la imagen a WebP, con un máximo de 5 MB.')
+  if (thumbnailBlob && (thumbnailBlob.type !== 'image/webp' || !thumbnailBlob.size || thumbnailBlob.size > MAX_IMAGE_BYTES)) throw new Error('Miniatura WebP inválida.')
   const path = imagePath(productId)
+  const thumbnailPath = thumbnailBlob ? imagePath(productId) : null
+  const uploadedPaths = [path]
   const storage = client.storage.from(IMAGE_BUCKET)
   const uploaded = await storage.upload(path, blob, { upsert: false, contentType: 'image/webp', cacheControl: '60' })
   if (uploaded.error) throw uploaded.error
   let saved
   try {
-    saved = await client.from('imagenes_producto').insert({ producto_id: productId, bucket_id: IMAGE_BUCKET, storage_path: path, texto_alternativo: alt.trim(), orden: order }).select().single()
+    if (thumbnailPath) {
+      const thumbnail = await storage.upload(thumbnailPath, thumbnailBlob, { upsert: false, contentType: 'image/webp', cacheControl: '60' })
+      if (thumbnail.error) throw thumbnail.error
+      uploadedPaths.push(thumbnailPath)
+    }
+    saved = await client.from('imagenes_producto').insert({ ...(thumbnailPath ? { thumbnail_path: thumbnailPath } : {}), producto_id: productId, bucket_id: IMAGE_BUCKET, storage_path: path, texto_alternativo: alt.trim(), orden: order }).select().single()
   } catch (error) { saved = { error } }
   if (!saved.error) return saved.data
   // Compensación por API: nunca borrar filas de storage.objects por SQL.
   let removed
-  try { removed = await storage.remove([path]) } catch (error) { removed = { error } }
-  if (removed.error || (Array.isArray(removed.data) && removed.data.length === 0)) {
-    const queued = await client.from('archivos_pendientes_limpieza').insert({ bucket_id: IMAGE_BUCKET, storage_path: path, motivo: 'fallo_al_guardar_referencia' })
+  try { removed = await storage.remove(uploadedPaths) } catch (error) { removed = { error } }
+  if (removed.error || (Array.isArray(removed.data) && removed.data.length < uploadedPaths.length)) {
+    const queued = await client.from('archivos_pendientes_limpieza').insert(uploadedPaths.map(storage_path => ({ bucket_id: IMAGE_BUCKET, storage_path, motivo: 'fallo_al_guardar_referencia' })))
     if (queued.error) throw new Error(`No se guardó la imagen ni se pudo registrar su limpieza. Ruta para revisar: ${path}`)
   }
   throw saved.error
@@ -109,7 +118,7 @@ export async function deleteProductImage(client, id) {
   if (!data?.length) throw new Error('No se eliminó la referencia. Revisá el acceso y el identificador.')
 }
 
-export async function cleanImageQueue(client, limit = 50, paths) {
+export async function cleanImageQueue(client, limit = 50, paths, thumbnails = false) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Límite de limpieza inválido.')
   if (paths !== undefined && (!Array.isArray(paths) || paths.some(path => typeof path !== 'string'))) throw new Error('Rutas de limpieza inválidas.')
   if (paths?.length === 0) return []
@@ -119,7 +128,9 @@ export async function cleanImageQueue(client, limit = 50, paths) {
   if (error) throw error
   const results = []
   for (const row of data) {
-    const linked = await client.from('imagenes_producto').select('id').eq('bucket_id', row.bucket_id).eq('storage_path', row.storage_path).limit(1)
+    let referenceQuery = client.from('imagenes_producto').select('id').eq('bucket_id', row.bucket_id)
+    referenceQuery = thumbnails ? referenceQuery.or('storage_path.eq.' + row.storage_path + ',thumbnail_path.eq.' + row.storage_path) : referenceQuery.eq('storage_path', row.storage_path)
+    const linked = await referenceQuery.limit(1)
     if (linked.error) { results.push({ path: row.storage_path, error: linked.error }); continue }
     if (linked.data.length) { results.push({ path: row.storage_path, skipped: true }); continue }
     const removed = await client.storage.from(row.bucket_id).remove([row.storage_path])
@@ -128,4 +139,12 @@ export async function cleanImageQueue(client, limit = 50, paths) {
     results.push({ path: row.storage_path, error: done.error || (!done.data?.length ? new Error('No se pudo cerrar el pendiente de limpieza. Revisá tus permisos y reintentá.') : null) })
   }
   return results
+}
+
+export async function signedImageUrls(client, paths) {
+  const unique = [...new Set(paths)]
+  if (!unique.length) return new Map()
+  const { data, error } = await client.storage.from(IMAGE_BUCKET).createSignedUrls(unique, SIGNED_IMAGE_SECONDS)
+  if (error) throw error
+  return new Map(data.filter(image => image.signedUrl && !image.error).map(image => [image.path, image.signedUrl]))
 }

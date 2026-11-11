@@ -1,4 +1,5 @@
-import { isAgreedPrice, pricingSummary, variantPriceLabel, formatPrice, productionLabel, AGREED_PRICE_LABEL } from './pricing.js'
+import { isAgreedPrice, pricingSummary } from './pricing.js'
+import { variantLabel } from './variants.js'
 export const CART_KEY = 'mostacho-cart-v1'
 export const cartItemId = item => item.productId ? `product:${item.productId}` : item.variantId
 export function readCart(storage) {
@@ -41,13 +42,12 @@ export function resolveCart(items, products) {
 export function makeSummary(lines, origin) {
   const pricing = pricingSummary(lines)
   if (!lines.length || lines.some(l => l.error) || !pricing.valid) return ''
-  return ['Hola Mostacho 3D, quisiera cotizar:', ...lines.map(l => [
-    `\n${l.product.name}${l.product.demo ? ' [PRUEBA FICTICIA]' : ''}`,
-    ...(!l.productId ? [`SKU: ${l.variant.sku}`, `Variante: ${l.variant.name}`, `Medidas: ${l.variant.dimensions}`] : []), `Cantidad: ${l.quantity}`,
-    `Precio: ${variantPriceLabel(l.variant)}`,
-    `Subtotal: ${isAgreedPrice(l.variant) ? AGREED_PRICE_LABEL : formatPrice(l.subtotal, l.variant.currency)}`,
-    productionLabel(l.variant), `${origin}/productos/${l.product.slug}`,
+  return ['Hola Mostacho 3D, estoy interesado en:', ...lines.map(l => [
+    `\n- ${l.product.name}${l.product.demo ? ' [PRUEBA FICTICIA]' : ''}`,
+    ...(!l.productId ? [`Variante: ${variantLabel(l.variant)}`, ...(l.variant.dimensions ? [`Medidas: ${l.variant.dimensions}`] : [])] : []),
+    `Cantidad: ${l.quantity}`,
+    `${origin}/productos/${l.product.slug}`,
   ].join('\n')), `\n${pricing.label}`,
-  ...(pricing.quoted ? ['El importe de las opciones a acordar no está incluido. Total final a confirmar con el vendedor.'] : []),
-  'Todos los productos se realizan por pedido. Precio final, tamaños y plazos a confirmar; esta consulta no crea un pedido.'].join('\n')
+  ...(pricing.quoted ? ['Las opciones a acordar se calculan aparte.'] : []),
+  'Total final y plazo a confirmar.'].join('\n')
 }

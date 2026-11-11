@@ -1,13 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "headers": [
-    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }, { "key": "Service-Worker-Allowed", "value": "/" }] },
-    { "source": "/manifest.webmanifest", "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }, { "key": "Cache-Control", "value": "no-cache" }] },
-    { "source": "/offline.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
-    { "source": "/admin", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
-    { "source": "/admin/:path*", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
-    { "source": "/carrito", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
-    { "source": "/carrito/", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] }
+    {"source":"/assets/:path*","headers":[{"key":"Cache-Control","value":"public, max-age=31536000, immutable"}]},
+    {"source":"/sw.js","headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"},{"key":"Service-Worker-Allowed","value":"/"}]},
+    {"source":"/manifest.webmanifest","headers":[{"key":"Content-Type","value":"application/manifest+json"},{"key":"Cache-Control","value":"no-cache"}]},
+    {"source":"/offline.html","headers":[{"key":"Cache-Control","value":"no-cache"}]},
+    {"source":"/admin","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"private, no-store"}]},
+    {"source":"/admin/:path*","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"private, no-store"}]},
+    {"source":"/carrito","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"private, no-store"}]},
+    {"source":"/carrito/","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"private, no-store"}]}
   ],
-  "rewrites": [{ "source": "/((?!.*\\.).*)", "destination": "/index.html" }]
+  "rewrites": [{"source":"/((?!.*\\.).*)","destination":"/index.html"}]
 }

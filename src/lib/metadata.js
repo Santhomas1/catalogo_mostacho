@@ -1,5 +1,9 @@
+import { business } from './business.js'
+
+const location = `${business.city}, ${business.region}, ${business.country}`
+
 export const PRODUCTION_ORIGIN = 'https://catalogo-mostacho.vercel.app'
-export const BRAND_DESCRIPTION = 'Impresión 3D por pedido en San Miguel de Tucumán. Contanos tu idea y coordinamos el retiro con Mostacho 3D.'
+export const BRAND_DESCRIPTION = `Mostacho 3D ofrece impresión 3D por pedido en ${location}, con retiro coordinado.`
 export const SHARE_IMAGE = '/logo/mostacho.png'
 export function siteOrigin(value = '') {
   if (!value.trim()) return ''
@@ -10,9 +14,9 @@ export function siteOrigin(value = '') {
 export function routeMetadata(pathname, search = '') {
   const path = pathname.replace(/\/+$/, '') || '/'
   const pages = {
-    '/': ['Mostacho 3D · Impresión 3D en Tucumán', BRAND_DESCRIPTION],
-    '/catalogo': ['Catálogo · Mostacho 3D', 'Explorá productos impresos en 3D por pedido. Opciones con precio fijo o a acordar con el vendedor.'],
-    '/contacto': ['Contacto · Mostacho 3D', 'Contactá a Mostacho 3D por WhatsApp o Instagram. Estamos en San Miguel de Tucumán, con retiro coordinado.'],
+    '/': ['Impresión 3D en San Miguel de Tucumán · Mostacho 3D', BRAND_DESCRIPTION],
+    '/catalogo': ['Catálogo · Mostacho 3D', `Explorá el catálogo de impresión 3D por pedido de Mostacho 3D en ${location}.`],
+    '/contacto': ['Contacto · Mostacho 3D', `Contactá a Mostacho 3D por WhatsApp o Instagram. Estamos en ${location}, con retiro coordinado.`],
     '/carrito': ['Tu consulta · Mostacho 3D', 'Revisá tu selección y prepará una cotización por WhatsApp.', true],
   }
   if (path === '/catalogo') {

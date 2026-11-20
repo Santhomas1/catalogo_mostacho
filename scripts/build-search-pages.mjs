@@ -6,7 +6,7 @@ import { PRODUCTION_ORIGIN, routeMetadata, SHARE_IMAGE, siteOrigin } from '../sr
 const origin = siteOrigin(loadEnv('production', process.cwd(), 'VITE_').VITE_SITE_URL || PRODUCTION_ORIGIN)
 const template = await readFile('dist/index.html', 'utf8')
 const pages = [
-  { path: '/', file: 'index.html', heading: 'Impresión 3D por pedido en Tucumán' },
+  { path: '/', file: 'index.html', heading: `Impresión 3D por pedido en ${business.city}` },
   { path: '/catalogo', file: 'catalogo.html', heading: 'Catálogo de impresión 3D' },
   { path: '/contacto', file: 'contacto.html', heading: 'Contacto de Mostacho 3D' },
 ]
@@ -19,7 +19,21 @@ const organization = {
   name: business.name,
   url: `${origin}/`,
   logo: image,
-  areaServed: { '@type': 'City', name: business.city },
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: business.city,
+    addressRegion: business.region,
+    addressCountry: business.countryCode,
+  },
+  areaServed: {
+    '@type': 'City',
+    name: business.city,
+    containedInPlace: {
+      '@type': 'AdministrativeArea',
+      name: business.region,
+      containedInPlace: { '@type': 'Country', name: business.country },
+    },
+  },
   sameAs: [business.instagram],
 }
 const escape = (value) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;')

@@ -32,12 +32,16 @@ export function mapProduct(row, urls = new Map()) {
 const cardSelection = selection.replace('descripcion,instrucciones_cuidado,', '').replace('codigo_hex,', '')
 const cartSelection = selection.replace(/,\s*imagenes_producto\([^)]*\)/, '').replace('descripcion,instrucciones_cuidado,', '')
 
+export function selectPublicProducts(client, columns, options = {}) {
+  return client.from('productos').select(columns, options)
+    .eq('publicado', true).eq('es_ejemplo', false).eq('categorias.activa', true)
+}
+
 // Reuse is opt-in: only enable it with the isolated, anonymous catalog client.
 export function createCatalogService(client, { reuseSignedUrls = false, thumbnails = false, now = Date.now } = {}) {
   const signed = new Map()
   function publicProducts(columns = selection, count = false) {
-    return client.from('productos').select(thumbnails ? columns.replace('storage_path,', 'storage_path,thumbnail_path,') : columns, count ? { count: 'exact' } : {})
-      .eq('publicado', true).eq('es_ejemplo', false).eq('categorias.activa', true)
+    return selectPublicProducts(client, thumbnails ? columns.replace('storage_path,', 'storage_path,thumbnail_path,') : columns, count ? { count: 'exact' } : {})
       .eq('variantes_producto.activa', true)
       .eq('variantes_producto.materiales.activo', true).eq('variantes_producto.colores.activo', true)
   }

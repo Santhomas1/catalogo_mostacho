@@ -57,5 +57,3 @@ for (const { path, file, heading } of pages) {
 // Dynamic routes retain the SPA entry point and set their metadata after loading.
 await writeFile('dist/app.html', template)
 await writeFile('dist/robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`)
-const urls = pages.map(({ path }) => `  <url><loc>${escape(new URL(path, origin).href)}</loc></url>`).join('\n')
-await writeFile('dist/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`)

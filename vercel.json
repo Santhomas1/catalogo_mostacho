@@ -10,5 +10,13 @@
     {"source":"/carrito","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"private, no-store"}]},
     {"source":"/carrito/","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"private, no-store"}]}
   ],
-  "rewrites": [{"source":"/((?!.*\\.).*)","destination":"/index.html"}]
+  "rewrites": [
+    {"source":"/","destination":"/index.html"},
+    {"source":"/catalogo","has":[{"type":"query","key":"q"}],"destination":"/app.html"},
+    {"source":"/catalogo","has":[{"type":"query","key":"categoria"}],"destination":"/app.html"},
+    {"source":"/catalogo","has":[{"type":"query","key":"pagina"}],"destination":"/app.html"},
+    {"source":"/catalogo","destination":"/catalogo.html"},
+    {"source":"/contacto","destination":"/contacto.html"},
+    {"source":"/((?!.*\\.).*)","destination":"/app.html"}
+  ]
 }

@@ -71,7 +71,7 @@ test('registro requiere contexto seguro, espera carga y no fuerza recargas',asyn
  registerPwa({...browser,navigator:{}});assert.equal(calls.length,1)
 })
 test('Vercel preserva rutas de archivos y permite navegación SPA sin extensión',()=>{
- const config=JSON.parse(read('vercel.json'));const pattern=new RegExp('^'+config.rewrites[0].source+'$')
+ const config=JSON.parse(read('vercel.json'));const pattern=new RegExp('^'+config.rewrites.at(-1).source+'$')
  for(const path of ['/','/catalogo','/carrito','/admin/actualizar-clave','/productos/maceta']) assert.ok(pattern.test(path))
  for(const path of ['/sw.js','/manifest.webmanifest','/offline.html','/pwa/icon-192.png','/assets/index.js']) assert.ok(!pattern.test(path))
  assert.ok(config.headers.find(h=>h.source==='/sw.js').headers.some(h=>h.key==='Cache-Control' && h.value.includes('no-cache')))

@@ -1,3 +1,4 @@
+export const PRODUCTION_ORIGIN = 'https://catalogo-mostacho.vercel.app'
 export const BRAND_DESCRIPTION = 'Impresión 3D por pedido en San Miguel de Tucumán. Contanos tu idea y coordinamos el retiro con Mostacho 3D.'
 export const SHARE_IMAGE = '/logo/mostacho.png'
 export function siteOrigin(value = '') {

@@ -11,6 +11,7 @@
     {"source":"/carrito/","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"private, no-store"}]}
   ],
   "rewrites": [
+    {"source":"/sitemap.xml","destination":"/api/sitemap"},
     {"source":"/","destination":"/index.html"},
     {"source":"/catalogo","has":[{"type":"query","key":"q"}],"destination":"/app.html"},
     {"source":"/catalogo","has":[{"type":"query","key":"categoria"}],"destination":"/app.html"},

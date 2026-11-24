@@ -35,7 +35,9 @@ Inicio, catálogo, detalle y carrito consultan Supabase. La búsqueda, categorí
 
 La maceta ficticia ya no se importa en la web y su registro remoto sigue en borrador como ejemplo. **Es normal ver el catálogo vacío hasta que se publiquen productos reales.** No hay un fallback a datos ficticios si falla la conexión. Los archivos antiguos de `src/data/` quedan sin uso en tiempo de ejecución.
 
-El bucket de productos es privado: las URLs duran 60 segundos y se renuevan al consultar las páginas. La carga y mantenimiento de imágenes y el login/panel están implementados en la etapa 7. Las cuentas autorizadas ya pueden utilizar `/admin`. La recuperación de contraseña requiere comprobar las URLs permitidas y el correo real según `SUPABASE_ETAPA_7.md`.
+El bucket de productos es privado. El catálogo público reutiliza URLs firmadas de cinco minutos y las renueva con un margen de 45 segundos; las firmas del panel duran 60 segundos. El listado conserva resultados en memoria durante 30 segundos y las categorías durante tres minutos, con un máximo de 24 entradas. Las páginas públicas se actualizan cada tres minutos cuando están visibles. El detalle y la validación del carrito siempre consultan datos actuales; reintentar fuerza una lectura y las acciones del panel invalidan la caché de esta pestaña. No se persiste esta caché en disco. Ver la medición y los límites en `RENDIMIENTO_Y_COSTOS.md`.
+
+La carga y mantenimiento de imágenes y el login/panel están implementados en la etapa 7. Las cuentas autorizadas ya pueden utilizar `/admin`. La recuperación de contraseña requiere comprobar las URLs permitidas y el correo real según `SUPABASE_ETAPA_7.md`.
 
 ## Pruebas
 

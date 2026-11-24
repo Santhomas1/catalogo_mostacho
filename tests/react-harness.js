@@ -19,10 +19,12 @@ import { useRemote } from './src/hooks/useRemote.js';
 import Cart from './src/pages/Cart.jsx';
 import ProductCard, { ProductPhoto } from './src/components/ProductCard.jsx';
 import { CartProvider, useCart } from './src/components/CartProvider.jsx';
+import { invalidateCatalog } from './src/services/catalog.js';
 export { act };
 let ctx; let currentPath;
 function Probe() { ctx = useCart(); currentPath = useLocation().pathname; return null; }
 function setup(items, options = {}) {
+ invalidateCatalog();
  const memory = new Map([['mostacho-cart-v1', options.stored === undefined ? JSON.stringify(items) : options.stored]]);
  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
  globalThis.window = { location: { origin: 'https://example.com' }, localStorage: { getItem: key => { if (options.readError) throw Error('blocked'); return memory.get(key) || null; }, setItem: (key, value) => { if (options.writeError) throw Error('quota'); memory.set(key, value); }, removeItem: key => memory.delete(key) }, addEventListener() {}, removeEventListener() {}, scrollTo() {} };

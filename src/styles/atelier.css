@@ -1,0 +1,84 @@
+/* Mostacho adaptations inspired by Magic UI's Dot Pattern, Shimmer and Border Beam.
+   Native CSS, existing shadcn-style controls and Lucide; no animation dependency.
+   Intro animations run once, for less than five seconds. */
+.desktop-nav a { display: inline-flex; align-items: center; gap: .5rem; }
+.desktop-nav a > svg { width: 1rem; height: 1rem; }
+.desktop-nav a.active > svg { color: var(--ring); }
+.hero-details { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; margin-top: 1.75rem; }
+.hero-details > span { display: inline-flex; align-items: center; gap: .5rem; color: var(--text-secondary); font-size: .875rem; }
+.hero-details svg { width: 1.125rem; height: 1.125rem; color: var(--ring); }
+.hero .hero-note { margin-top: 1.25rem; }
+.hero .highlight { position: relative; display: inline-block; }
+.hero .highlight::after { content: ''; position: absolute; left: .04em; right: 0; bottom: -.08em; height: .055em; border-radius: 100%; background: var(--primary); transform: rotate(-2deg); }
+.hero-actions .atelier-shimmer { position: relative; isolation: isolate; overflow: hidden; background: var(--foreground); color: var(--background); padding-inline: 1.5rem; }
+.atelier-shimmer::before { content: ''; position: absolute; inset: -50% auto -50% -60%; width: 35%; pointer-events: none; background: linear-gradient(90deg, transparent, #ffffff38, transparent); transform: skewX(-20deg); }
+.idea-shell { position: relative; isolation: isolate; }
+.idea-panel { isolation: isolate; }
+.atelier-dot-pattern { position: absolute; inset: 0; pointer-events: none; z-index: -1; background-image: radial-gradient(#14719740 1px, transparent 1px); background-size: 1.25rem 1.25rem; mask-image: linear-gradient(135deg, transparent 12%, #000 100%); }
+.panel-top, .panel-bottom { position: relative; z-index: 1; }
+.panel-index { display: inline-flex; align-items: center; gap: .625rem; font-size: .6875rem; letter-spacing: .09em; }
+.panel-index svg { width: 1rem; height: 1rem; }
+.panel-signature { width: 2rem; height: 2rem; color: var(--ring); }
+.idea-material-tag { position: relative; display: inline-flex; align-items: center; align-self: flex-end; width: fit-content; gap: .75rem; margin: 1rem 0 .5rem; padding: .875rem 1.125rem; border: 1px solid #ffffffcc; border-radius: 1rem; background: #ffffffdf; box-shadow: 0 .5rem 1.5rem #17323b0a; color: var(--text-secondary); font-size: .75rem; line-height: 1.6; transform: rotate(-4deg); }
+.idea-material-tag > svg { width: 1.5rem; height: 1.5rem; color: var(--ring); }
+.idea-material-tag strong { color: var(--foreground); font-weight: 600; }
+.atelier-border-beam { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 3; }
+.atelier-border-beam::after { content: none; }
+.process-strip { background: var(--surface-tray); border-block: 1px solid var(--line-subtle); }
+.process-inner { position: relative; gap: 2rem; padding-block: 2rem; }
+.process-inner > span { position: relative; flex: 1; align-items: flex-start; gap: 1rem; }
+.process-inner > span::before { content: none; }
+.process-icon { position: relative; display: grid; place-items: center; flex: 0 0 3rem; width: 3rem; height: 3rem; border: 1px solid var(--input); border-radius: 1rem; background: var(--background); }
+.process-inner .process-icon svg { width: 1.25rem; height: 1.25rem; color: var(--ring); }
+.process-copy { display: flex; flex-direction: column; gap: .375rem; padding-top: .125rem; }
+.process-copy strong { color: var(--foreground); font-size: .9375rem; font-weight: 600; line-height: 1.5; }
+.process-copy small { max-width: 15rem; color: var(--text-secondary); font-size: .875rem; line-height: 1.6; }
+.product-peek { position: absolute; right: 1rem; top: 1rem; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 1px solid var(--input); background: var(--surface-card); color: var(--ring); opacity: 0; transform: translateY(.375rem); transition: opacity .2s, transform .2s; pointer-events: none; }
+.product-peek svg { width: 1.25rem; height: 1.25rem; }
+.product-card:focus-within .product-peek { opacity: 1; transform: none; }
+.product-card:focus-within { outline: 2px solid var(--ring); outline-offset: 3px; }
+.catalog-intro { position: relative; isolation: isolate; overflow: hidden; }
+.catalog-intro > :not(.intro-ornament) { position: relative; z-index: 1; }
+.intro-ornament { position: absolute; right: 24%; bottom: -2rem; z-index: 0; width: 14rem; height: 14rem; color: #14719712; transform: rotate(-15deg); stroke-width: .75; pointer-events: none; }
+.google-review-card { position: relative; border-color: var(--input); transition: border-color .25s, box-shadow .25s; }
+.google-review-card:focus-within { border-color: var(--ring); box-shadow: 0 0 0 4px var(--accent); }
+.google-review-icon { border: 1px solid var(--input); }
+.contact-grid article { transition: box-shadow .25s, background-color .25s; }
+.contact-grid article:focus-within { box-shadow: 0 0 0 2px var(--ring); }
+
+@media (hover: hover) {
+  .product-card:hover .product-peek { opacity: 1; transform: none; }
+  .google-review-card:hover { border-color: var(--ring); }
+  .contact-grid article:hover { box-shadow: 0 0 0 1px var(--input), 0 1rem 2rem #17323b08; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .atelier-shimmer::before { animation: atelier-shimmer 1.3s .7s both; }
+  .idea-material-tag { animation: atelier-tag-in .8s .35s both; }
+  .hero .highlight::after { transform-origin: left; animation: atelier-underline .7s .25s both; }
+  @supports (offset-path: inset(0 round 1rem)) {
+    .atelier-border-beam::after { content: ''; position: absolute; width: 5rem; height: 2px; background: linear-gradient(90deg, transparent, var(--ring)); offset-path: inset(1px round 2.5rem); offset-anchor: 100% 50%; animation: atelier-border-beam 3.5s .3s both; }
+  }
+}
+@keyframes atelier-shimmer { from { left: -60%; } to { left: 150%; } }
+@keyframes atelier-tag-in { from { opacity: 0; transform: translateY(.75rem) rotate(-4deg); } to { opacity: 1; transform: translateY(0) rotate(-4deg); } }
+@keyframes atelier-underline { from { transform: rotate(-2deg) scaleX(0); } to { transform: rotate(-2deg) scaleX(1); } }
+@keyframes atelier-border-beam { 0% { offset-distance: 0%; opacity: 0; } 10%, 85% { opacity: .8; } 100% { offset-distance: 100%; opacity: 0; } }
+@media (max-width: 767px) {
+  .process-inner { gap: 1.5rem; }
+  .process-inner > span { align-items: center; }
+  .process-copy small { max-width: none; }
+  .process-inner > span:not(:last-child)::after { content: ''; position: absolute; left: 1.5rem; top: 3.25rem; bottom: -1.25rem; border-left: 1px dashed var(--input); }
+  .idea-material-tag { margin-block: 1.25rem .75rem; }
+  .hero-details { gap: .75rem 1.25rem; }
+  .intro-ornament { right: -2rem; width: 10rem; height: 10rem; }
+}
+@media (max-width: 480px) {
+  .panel-index { font-size: .625rem; gap: .375rem; }
+  .product-peek { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atelier-shimmer::before, .atelier-border-beam::after { display: none; }
+  .idea-material-tag, .hero .highlight::after { animation: none; }
+  .product-peek { transform: none; transition: none; }
+  .google-review-card, .contact-grid article { transition: none; }
+}

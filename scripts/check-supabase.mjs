@@ -6,7 +6,7 @@ const url = process.env.VITE_SUPABASE_URL
 const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
 assert.ok(url && key?.startsWith('sb_publishable_'), 'Configurar las variables públicas de Supabase.')
 const client = createClient(url, key, { auth: { persistSession: false }, global: { fetch: (input, options = {}) => fetch(input, { ...options, signal: AbortSignal.timeout(15000) }) } })
-const service = createCatalogService(client, { thumbnails: process.env.VITE_PRODUCT_THUMBNAILS === 'true' })
+const service = createCatalogService(client, { reuseSignedUrls: true, cacheResults: true, signedUrlSeconds: 300, thumbnails: process.env.VITE_PRODUCT_THUMBNAILS !== 'false' })
 const list = await service.list()
 const categories = await service.categories()
 const filtered = await service.list({ query: 'prueba-que-no-debe-existir-8123', category: 'sin-categoria-8123', page: 2 })
@@ -15,4 +15,14 @@ assert.equal((await service.bySlug('sin-producto-8123')).product, null)
 assert.equal((await service.bySlug('maceta-geometrica-ejemplo')).product, null)
 assert.deepEqual(await service.byVariantIds(['ffffffff-ffff-4fff-8fff-ffffffffffff']), [])
 assert.ok(list.products.every(p => p.published && !p.demo))
+assert.equal(list.imageWarning, false, 'Las portadas deben poder firmarse con el cliente público.')
+if (list.products[0]) {
+ const detail = await service.bySlug(list.products[0].slug)
+ assert.equal(detail.product.id, list.products[0].id)
+ assert.equal(detail.imageWarning, false, 'El detalle y sus miniaturas deben poder firmarse.')
+ assert.equal((await service.byProductIds([detail.product.id]))[0].id, detail.product.id)
+ const variantIds = detail.product.variants.map(variant => variant.id)
+ if (variantIds.length) assert.equal((await service.byVariantIds(variantIds))[0].id, detail.product.id)
+}
 console.log(JSON.stringify({ ok: true, productsOnFirstPage: list.products.length, publicCount: list.count, categories: categories.length, filtersAndPagination: 'OK', hiddenAndMissingSlugs: 'OK', missingCartVariants: 'OK' }))
+await client.auth.dispose()

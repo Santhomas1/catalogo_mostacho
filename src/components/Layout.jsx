@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ShoppingBag, ArrowUpRight, Instagram, MapPin, ShieldCheck } from 'lucide-react'
+import { ShoppingBag, ArrowUpRight, Instagram, MapPin, ShieldCheck, House, Shapes, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { business } from '@/lib/business'
 import { useCart } from '@/components/CartProvider'
@@ -25,7 +25,7 @@ export default function Layout() {
       <div className="container header-inner">
         <Link to="/" className="wordmark" aria-label="Mostacho 3D, inicio"><img className="brand-logo" src="/logo/mostacho.png" alt="Mostacho 3D Prints" width="1536" height="1024" /></Link>
         <nav aria-label="Navegación principal" className="desktop-nav">
-          <NavLink to="/" end>Inicio</NavLink><NavLink to="/catalogo">Catálogo</NavLink><NavLink to="/contacto">Contacto</NavLink>
+          <NavLink to="/" end><House aria-hidden="true" />Inicio</NavLink><NavLink to="/catalogo"><Shapes aria-hidden="true" />Catálogo</NavLink><NavLink to="/contacto"><MessageCircle aria-hidden="true" />Contacto</NavLink>
         </nav>
         <div className="header-actions">
           <Button asChild variant="outline" size="icon"><Link className="cart-link" to="/carrito" aria-label={`Ver carrito, ${count} unidades`}><ShoppingBag />{count > 0 && <span className="cart-count">{count}</span>}</Link></Button>

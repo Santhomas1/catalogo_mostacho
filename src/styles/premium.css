@@ -12,6 +12,26 @@
   font-family: 'DM Sans', sans-serif;
 }
 body { background: var(--background); }
+.home-google-review { margin-bottom: var(--space-section); }
+.google-review-card { display: flex; align-items: center; gap: 2rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--input); border-radius: var(--radius-panel); background: var(--surface-tray); }
+.google-review-icon { display: grid; place-items: center; flex: 0 0 3.5rem; width: 3.5rem; height: 3.5rem; border-radius: 50%; color: var(--ring); background: var(--background); }
+.google-review-icon svg { width: 1.75rem; height: 1.75rem; }
+.google-review-copy { flex: 1; min-width: 0; }
+.google-review-label { margin: 0 0 .75rem; color: var(--text-secondary); font-size: .875rem; font-weight: 600; letter-spacing: .08em; }
+.google-review-copy h2 { margin: 0 0 .75rem; font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.2; }
+.google-review-copy > p:last-child { max-width: 36rem; margin: 0; color: var(--text-secondary); font-size: 1rem; line-height: 1.7; }
+.google-review-action { flex: 0 0 auto; max-width: 100%; }
+.google-review-action > p { max-width: 15rem; margin: .75rem 0 0; color: var(--text-secondary); font-size: .875rem; line-height: 1.5; }
+@media (max-width: 900px) {
+  .google-review-card { flex-wrap: wrap; gap: 1.5rem; }
+  .google-review-action { flex-basis: 100%; }
+}
+@media (max-width: 480px) {
+  .google-review-card { display: block; }
+  .google-review-icon { margin-bottom: 1.5rem; }
+  .google-review-action { margin-top: 1.5rem; }
+  .google-review-action [data-slot=button] { width: 100%; white-space: normal; text-align: center; }
+}
 body::after { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .025; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23000' filter='url(%23n)' opacity='.5' d='M0 0h180v180H0z'/%3E%3C/svg%3E"); }
 ::selection { background: #bce8f7; color: #17323b; }
 .container { width: min(1280px, calc(100% - 96px)); }

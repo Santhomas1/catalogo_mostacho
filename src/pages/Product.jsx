@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { catalogService } from '@/services/catalog'
+import { catalogService, PUBLIC_REFRESH_MS } from '@/services/catalog'
 import { useRemote } from '@/hooks/useRemote'
 import RemoteState from '@/components/RemoteState'
 import { ProductVisual, ProductPhoto } from '@/components/ProductCard'
@@ -15,7 +15,7 @@ import { variantLabel } from '@/lib/variants'
 export default function Product() {
   const { slug } = useParams()
   const loader = useCallback(() => catalogService().bySlug(slug), [slug])
-  const { data, loading, error, retry } = useRemote(loader, 45000)
+  const { data, loading, error, retry } = useRemote(loader, PUBLIC_REFRESH_MS)
   if (loading || error) return <section className="container catalog-page"><RemoteState loading={loading} error={error} retry={retry} /></section>
   const product = data?.product
   if (!product) return <><PageMetadata metadata={{title: 'Producto no disponible · Mostacho 3D', description: 'Este producto no está disponible en el catálogo.', noIndex: true}} /><EmptyPage eyebrow="PRODUCTO NO DISPONIBLE" title="Este producto no está disponible." description="Podés seguir recorriendo el catálogo." action="Ir al catálogo" to="/catalogo" /></>

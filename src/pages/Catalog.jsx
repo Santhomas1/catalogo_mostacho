@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import ProductCard from '@/components/ProductCard'
-import { catalogService } from '@/services/catalog'
+import { catalogService, PUBLIC_REFRESH_MS } from '@/services/catalog'
 import { PAGE_SIZE } from '@/services/catalog-service'
 import { useRemote } from '@/hooks/useRemote'
 import RemoteState from '@/components/RemoteState'
@@ -12,10 +12,10 @@ export default function Catalog() {
   const query = (params.get('q') || '').slice(0, 120), category = params.get('categoria') || ''
   const rawPage = Number(params.get('pagina') || 1)
   const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? Math.min(rawPage, 100000) : 1
-  const loader = useCallback(() => catalogService().list({ query, category, page }), [query, category, page])
-  const categoryLoader = useCallback(() => catalogService().categories(), [])
-  const { data, loading, error, retry } = useRemote(loader, 45000, query ? 250 : 0)
-  const { data: categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useRemote(categoryLoader, 45000)
+  const loader = useCallback(options => catalogService().list({ query, category, page, ...options }), [query, category, page])
+  const categoryLoader = useCallback(options => catalogService().categories(options), [])
+  const { data, loading, error, retry } = useRemote(loader, PUBLIC_REFRESH_MS, query ? 250 : 0)
+  const { data: categories, loading: categoriesLoading, error: categoriesError, retry: retryCategories } = useRemote(categoryLoader, PUBLIC_REFRESH_MS)
   const currentPage = data?.page || page
   const hasFilters = Boolean(query || category)
   const heading = useRef(null), previousPage = useRef(page)

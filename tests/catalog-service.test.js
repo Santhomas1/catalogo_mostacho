@@ -181,3 +181,130 @@ test('lecturas simultaneas se unifican; una carga posterior vuelve a leer datos 
  await service.list()
  assert.equal(reads, 4)
 })
+
+test('cache publica reutiliza resultados 30s, separa filtros y permite reintentar sin cache', async () => {
+ let now = 1000, reads = 0
+ const service = createCatalogService(clientWith(async () => {
+  reads++
+  return json([{ ...row, precio: String(reads) }], { 'Content-Range': '0-0/1' })
+ }), { reuseSignedUrls: true, cacheResults: true, signedUrlSeconds: 300, now: () => now })
+ const first = await service.list({ query: 'maceta', page: 1 })
+ first.products[0].name = 'Mutación del consumidor'
+ now += 20000
+ const back = await service.list({ page: 1, query: 'maceta' })
+ assert.equal(reads, 1)
+ assert.equal(back.products[0].name, row.nombre)
+ await service.list({ query: 'otra' })
+ assert.equal(reads, 2)
+ const fresh = await service.list({ query: 'maceta', page: 1, force: true })
+ assert.equal(fresh.products[0].price, 3)
+ now += 30000
+ await service.list({ query: 'maceta', page: 1 })
+ assert.equal(reads, 4)
+})
+
+test('categorias se conservan tres minutos; carrito y detalle siempre leen datos actuales', async () => {
+ let now = 1000, reads = 0, price = '100'
+ const service = createCatalogService(clientWith(async input => {
+  reads++
+  const url = new URL(input)
+  if (url.pathname.endsWith('/categorias')) return json([{ id: 'cat', nombre: 'Decoración', slug: 'decoracion' }])
+  const current = { ...row, precio: price }
+  return json(url.searchParams.has('slug') ? current : [current])
+ }), { reuseSignedUrls: true, cacheResults: true, signedUrlSeconds: 300, now: () => now })
+ await service.categories()
+ now += 179999
+ await service.categories()
+ assert.equal(reads, 1)
+ now++
+ await service.categories()
+ assert.equal(reads, 2)
+ await service.categories({ force: true })
+ assert.equal(reads, 3)
+ assert.equal((await service.byProductIds([pid]))[0].price, 100)
+ assert.equal((await service.bySlug(row.slug)).product.price, 100)
+ price = '250'
+ assert.equal((await service.byProductIds([pid]))[0].price, 250)
+ assert.equal((await service.bySlug(row.slug)).product.price, 250)
+ assert.equal(reads, 7)
+})
+
+test('firmas de cinco minutos se reutilizan entre refrescos y se renuevan antes de vencer', async () => {
+ let now = 1000, signs = 0, reads = 0
+ const photo = { id: 'img', storage_path: 'products/full.webp', thumbnail_path: 'products/small.webp', orden: 0 }
+ const service = createCatalogService(clientWith(async (input, options) => {
+  if (String(input).includes('/storage/')) {
+   signs++
+   const { paths, expiresIn } = JSON.parse(options.body)
+   assert.equal(expiresIn, 300)
+   return json(paths.map(path => ({ path, signedURL: '/object/sign/productos/' + path + '?token=' + signs })))
+  }
+  reads++
+  return json([{ ...row, imagenes_producto: [photo] }])
+ }), { reuseSignedUrls: true, cacheResults: true, signedUrlSeconds: 300, thumbnails: true, now: () => now })
+ const first = await service.list()
+ now += 180000
+ const refreshed = await service.list()
+ assert.equal(reads, 2)
+ assert.equal(signs, 1)
+ assert.equal(first.products[0].images[0].url, refreshed.products[0].images[0].url)
+ now += 75000
+ await service.list()
+ assert.equal(signs, 2)
+})
+
+test('errores y fotos fallidas no se conservan; clientes sin opt-in no cachean datos', async () => {
+ let reads = 0, fail = true
+ const client = clientWith(async input => {
+  if (String(input).includes('/storage/')) return new Response('{}', { status: 403 })
+  reads++
+  if (fail) return new Response('{}', { status: 400 })
+  return json([{ ...row, imagenes_producto: [{ storage_path: 'products/photo.webp', orden: 0 }] }])
+ })
+ const service = createCatalogService(client, { reuseSignedUrls: true, cacheResults: true, signedUrlSeconds: 300 })
+ await assert.rejects(service.list())
+ fail = false
+ assert.equal((await service.list()).imageWarning, true)
+ await service.list()
+ assert.equal(reads, 3)
+ const isolated = createCatalogService(client, { cacheResults: true })
+ await isolated.list()
+ await isolated.list()
+ assert.equal(reads, 5)
+})
+
+test('tarjetas piden solo datos de precio, disponibilidad y portada; detalle mantiene especificaciones', async () => {
+ const selections = []
+ const service = createCatalogService(clientWith(async input => {
+  const url = new URL(input)
+  selections.push(url.searchParams.get('select'))
+  return json(url.searchParams.has('slug') ? row : [row])
+ }))
+ await service.list()
+ for (const field of ['sku', 'ancho_mm', 'alto_mm', 'profundidad_mm', 'plazo_produccion_dias', 'descripcion', 'instrucciones_cuidado']) {
+  assert.ok(!selections[0].includes(field), field)
+ }
+ await service.bySlug(row.slug)
+ assert.ok(selections[1].includes('sku'))
+ assert.ok(selections[1].includes('ancho_mm'))
+})
+
+test('invalidar descarta resultados anteriores incluso si una lectura vieja termina despues', async () => {
+ let reads = 0, releaseOld
+ const service = createCatalogService(clientWith(async () => {
+  const read = ++reads
+  if (read === 1) await new Promise(resolve => { releaseOld = resolve })
+  return json([{ ...row, precio: String(read) }])
+ }), { reuseSignedUrls: true, cacheResults: true, signedUrlSeconds: 300 })
+ const old = service.list()
+ while (!releaseOld) await new Promise(resolve => setTimeout(resolve, 0))
+ service.clearCache()
+ const fresh = await service.list()
+ assert.equal(fresh.products[0].price, 2)
+ releaseOld()
+ await old
+ assert.equal((await service.list()).products[0].price, 2)
+ assert.equal(reads, 2)
+ service.clearCache()
+ assert.equal((await service.list()).products[0].price, 3)
+})

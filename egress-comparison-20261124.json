@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-24",
+  "project": "mostacho-3d-desarrollo",
+  "visibleProducts": 79,
+  "baseline": "HEAD:src/services/catalog-service.js before the local egress optimization",
+  "thumbnailMode": true,
+  "measurement": "Decoded JSON response bytes; excludes image binaries, HTTP compression and billed egress",
+  "before": {
+    "firstPageJsonBytes": 10328,
+    "journeyResponseBytes": 20678,
+    "journeyHttpRequests": 6,
+    "signedPaths": 14,
+    "repeatedListRequests": 1,
+    "repeatedListBytes": 10328,
+    "repeatedCategoriesRequests": 1,
+    "publicRefreshMs": 45000
+  },
+  "after": {
+    "firstPageJsonBytes": 8372,
+    "journeyResponseBytes": 18603,
+    "journeyHttpRequests": 6,
+    "signedPaths": 14,
+    "repeatedListRequests": 0,
+    "repeatedListBytes": 0,
+    "repeatedCategoriesRequests": 0,
+    "publicRefreshMs": 180000
+  }
+}

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { adminError } from './admin-service'
+import { invalidateCatalog } from '@/services/catalog'
 export function useAdminAction() {
   const locked = useRef(false)
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
@@ -8,7 +9,7 @@ export function useAdminAction() {
     locked.current = true; setBusy(true); setError(''); setNotice('')
     try { await task(); setNotice(message); return true }
     catch (problem) { setError(adminError(problem)); return false }
-    finally { locked.current = false; setBusy(false) }
+    finally { invalidateCatalog(); locked.current = false; setBusy(false) }
   }
   return { busy, error, notice, run, clear: () => { setError(''); setNotice('') } }
 }

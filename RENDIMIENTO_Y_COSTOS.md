@@ -1,6 +1,34 @@
 # Rendimiento y costos de Mostacho 3D
 
-> La auditoría siguiente registra el estado anterior. Para la migración y optimización ya aplicadas, ver [Optimización de imágenes guardadas](OPTIMIZACION_IMAGENES_GUARDADAS.md).
+## Optimización de salida — 24 de noviembre de 2026
+
+Cambios implementados y compilados localmente; requieren publicar esta versión para afectar al sitio alojado. No requieren migraciones, cambios de plan ni modificaciones de los archivos guardados en Supabase.
+
+| Medida comprobada contra Supabase | Antes de este cambio | Después |
+| --- | ---: | ---: |
+| JSON de la primera página, 12 productos | 10.328 bytes | 8.372 bytes |
+| JSON de primera página, detalle y destacados, incluidas firmas | 20.678 bytes | 18.603 bytes |
+| Peticiones al repetir inmediatamente el listado | 1 | 0 |
+| Bytes al repetir inmediatamente el listado | 10.328 | 0 |
+| Peticiones al repetir inmediatamente categorías | 1 | 0 |
+| Intervalo del refresco público visible | 45 segundos | 180 segundos |
+
+La proyección de tarjetas reduce un **18,9%** el JSON de la primera página y un **10,0%** las respuestas del recorrido medido. El nuevo intervalo implica un **75% menos de ciclos periódicos** en una pestaña visible durante el mismo tiempo; no equivale a una reducción del 75% del egress mensual. La medición cuenta cuerpos JSON decodificados y no incluye binarios de fotos, compresión HTTP ni facturación. El antes usa el módulo de `HEAD` previo a esta implementación con miniaturas activas; ambos consultaron los mismos 79 productos visibles. Resultados resumidos en `egress-comparison-20261124.json`.
+
+Política actual:
+
+- Solo el cliente público aislado conserva resultados: listados durante 30 segundos y categorías durante tres minutos, con un máximo de 24 entradas. La caché vive en la memoria de la pestaña; no se guarda en localStorage ni en el service worker.
+- Se separan filtros y páginas. Los errores, las fotos con fallos y las redirecciones de páginas fuera de rango no se conservan. Reintentar evita la caché de resultados. Las acciones administrativas la invalidan en esta pestaña, incluso si hubo una escritura parcial seguida de un error. Una lectura anterior pendiente no puede repoblarla tras invalidar.
+- El detalle y los métodos del carrito no conservan resultados. La preparación de la consulta sigue validando precios y disponibilidad contra Supabase. Las lecturas simultáneas idénticas comparten únicamente la petición en curso.
+- Las firmas públicas duran 300 segundos y se reutilizan hasta que quedan 45 segundos; máximo 256 rutas. Las firmas administrativas conservan 60 segundos. El `cacheControl` de los archivos sigue en 60 segundos. No se hicieron públicos los buckets ni se cambiaron RLS o permisos.
+- Catálogo, categorías, inicio y detalle se refrescan cada 180 segundos mientras la pestaña está visible. Una edición desde otro dispositivo puede tardar hasta ese próximo refresco más la consulta; al navegar puede reutilizarse el listado durante 30 segundos o las categorías durante tres minutos. Recuperar foco vuelve a consultar cuando corresponde. El carrito conserva su lectura fresca antes de preparar el mensaje.
+- Una URL ya emitida puede seguir dando acceso a una foto después de ocultar el producto. Una nueva firma sigue dependiendo de RLS. Caducidad y caché CDN son independientes, y los bytes descargados no se revocan. Véase [Smart CDN y URLs firmadas](https://supabase.com/docs/guides/storage/cdn/smart-cdn).
+
+Verificación: `npm test` (112 pruebas), `npm run build` y `node --env-file=.env.local scripts/check-supabase.mjs`. La comprobación remota cubre filtros, paginación, exclusión de productos ocultos/inexistentes, firmas de portada y detalle y lecturas del carrito. `scripts/measure-catalog.mjs` permite repetir la medición con `BASELINE_CATALOG_MODULE` apuntando a una copia del servicio anterior. No imprime claves ni URLs firmadas. No se midió el tráfico del dominio publicado ni un ahorro mensual. El aviso de tamaño del decodificador HEIC sigue presente; ese módulo mantiene su carga diferida.
+
+## Registro histórico del 11 de noviembre
+
+> La auditoría siguiente registra el estado anterior y sus políticas de caché fueron reemplazadas por la sección del 24 de noviembre. Para la migración y optimización de imágenes ya aplicadas, ver [Optimización de imágenes guardadas](OPTIMIZACION_IMAGENES_GUARDADAS.md).
 
 Revisión: 11 de noviembre de 2026. Implementación local; sin despliegues, cambios de planes, migraciones remotas ni eliminación de archivos del proyecto alojado. Se conservaron los cambios anteriores de variantes y WhatsApp.
 

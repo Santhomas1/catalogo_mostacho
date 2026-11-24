@@ -9,18 +9,18 @@ export function useRemote(loader, refreshMs = 0, delayMs = 0) {
     let lastStarted = -Infinity
     // No muestra datos de una búsqueda anterior mientras llega la nueva.
     setState({ data: null, loading: true, error: '' })
-    async function run() {
+    async function run(force = false) {
       if (!active || running) return
       running = true
       lastStarted = Date.now()
       try {
-        const data = await loader()
+        const data = await loader({ force })
         if (active) setState({ data, loading: false, error: '' })
       } catch {
         if (active) setState({ data: null, loading: false, error: 'No pudimos actualizar la información. Revisá tu conexión y volvé a intentar.' })
       } finally { running = false }
     }
-    const initial = delayMs ? setTimeout(run, delayMs) : (run(), null)
+    const initial = delayMs ? setTimeout(() => run(attempt > 0), delayMs) : (run(attempt > 0), null)
     const timer = refreshMs ? setInterval(() => { if (document.visibilityState === 'visible') run() }, refreshMs) : null
     const focus = () => { if (Date.now() - lastStarted >= refreshMs) run() }
     if (refreshMs) window.addEventListener('focus', focus)

@@ -5,6 +5,7 @@ import App from './App'
 import { CartProvider } from './components/CartProvider'
 import './styles/globals.css'
 import './styles/premium.css'
+import './styles/atelier.css'
 import { registerPwa } from './lib/pwa'
 
 ReactDOM.createRoot(document.getElementById('root')).render(

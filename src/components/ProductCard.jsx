@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ScanEye } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { formatPrice, isAgreedPrice, AGREED_PRICE_LABEL, hasFixedProductPrice } from '@/lib/pricing'
@@ -43,6 +43,7 @@ export default function ProductCard({ product, headingLevel = 2 }) {
     <div className="product-card-core"><div className="product-media">
       <Link className="product-image-link" to={href} aria-label={`Ver ${product.name}`} tabIndex={-1}>
         {cover && !imageFailed ? <ProductPhoto image={cover} className="product-photo" alt={cover.alt} loading="lazy" decoding="async" width="640" height="640" onError={() => setImageFailed(true)} /> : <ProductVisual />}
+        <span className="product-peek" aria-hidden="true"><ScanEye /></span>
       </Link>
       {product.demo && <span className="demo-badge">Producto de prueba</span>}
     </div>

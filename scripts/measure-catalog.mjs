@@ -16,10 +16,18 @@ for (const [label, factory] of [...(baselineService ? [['before', baselineServic
   requests.push({ type: path.includes('/storage/') ? 'sign' : 'data', status: response.status, bytes: body.byteLength, ms: Math.round(performance.now() - started), exactCount: new Headers(options.headers).get('prefer')?.includes('count=exact') || false, signedPaths: path.includes('/storage/') ? JSON.parse(options.body).paths?.length : 0 })
   return response
  } } })
- const service = factory(client, { reuseSignedUrls: true, thumbnails: process.env.VITE_PRODUCT_THUMBNAILS === 'true' })
+ const service = factory(client, { reuseSignedUrls: true, thumbnails: process.env.VITE_PRODUCT_THUMBNAILS !== 'false', ...(label === 'after' ? { cacheResults: true, signedUrlSeconds: 300 } : {}) })
  const list = await service.list()
  if (list.products[0]) await service.bySlug(list.products[0].slug)
  await service.list({ featured: true, pageSize: 6, includeCount: false })
- console.log(JSON.stringify({ label, products: list.count, requests, responseBytes: requests.reduce((sum, r) => sum + r.bytes, 0), exactCounts: requests.filter(r => r.exactCount).length, signedPaths: requests.reduce((sum, r) => sum + (r.signedPaths || 0), 0) }))
+ const journey = requests.slice()
+ const repeatedListStart = requests.length
+ await service.list()
+ const repeatedList = requests.slice(repeatedListStart)
+ await service.categories()
+ const repeatedCategoriesStart = requests.length
+ await service.categories()
+ const repeatedCategories = requests.slice(repeatedCategoriesStart)
+ console.log(JSON.stringify({ label, products: list.count, requests: journey, responseBytes: journey.reduce((sum, r) => sum + r.bytes, 0), exactCounts: journey.filter(r => r.exactCount).length, signedPaths: journey.reduce((sum, r) => sum + (r.signedPaths || 0), 0), repeatedListRequests: repeatedList.length, repeatedListBytes: repeatedList.reduce((sum, r) => sum + r.bytes, 0), repeatedCategoriesRequests: repeatedCategories.length }))
  await client.auth.dispose()
 }

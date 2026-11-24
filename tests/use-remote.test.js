@@ -40,3 +40,16 @@ test('una busqueda cancelada antes de 250 ms no consulta; reintentar conserva re
 })
 
 after(closeClient)
+
+test('reintentar fuerza lectura fresca; refrescos automaticos permiten la cache breve', async t => {
+ t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: 1000 })
+ const options = []
+ const view = await mountRemote(async value => { options.push(value); return [] }, 180000)
+ try {
+  assert.deepEqual(options, [{ force: false }])
+  await act(async () => { view.state().retry() })
+  assert.deepEqual(options.at(-1), { force: true })
+  await act(async () => { t.mock.timers.tick(180000) })
+  assert.deepEqual(options.at(-1), { force: false })
+ } finally { await view.close() }
+})
